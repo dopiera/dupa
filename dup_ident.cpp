@@ -3,7 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <sha1.h> //NetBSD specific
+#include <openssl/sha.h>
 
 #include <exception>
 #include <string>
@@ -101,8 +101,8 @@ static cksum sha1(path const & p)
 		cksum prefix;
 	} sha_res;
 
-	SHA1_CTX sha;
-	SHA1Init(&sha);
+	SHA_CTX sha;
+	SHA_Init(&sha);
 	while (true)
 	{
 		ssize_t res = read(fd, buf, buf_size);
@@ -110,9 +110,9 @@ static cksum sha1(path const & p)
 			throw fs_exception(errno, "read '" + native + "'");
 		if (res == 0)
 			break;
-		SHA1Update(&sha, (u_char *)buf, res);
+		SHA_Update(&sha, (u_char *)buf, res);
 	}
-	SHA1Final(sha_res.complete, &sha);
+	SHA_Final(sha_res.complete, &sha);
 
 	fd = close(fd);
 	if (fd < 0)
