@@ -103,6 +103,7 @@ static cksum sha1(path const & p)
 
 	SHA_CTX sha;
 	SHA_Init(&sha);
+	size_t size = 0;
 	while (true)
 	{
 		ssize_t res = read(fd, buf, buf_size);
@@ -110,6 +111,7 @@ static cksum sha1(path const & p)
 			throw fs_exception(errno, "read '" + native + "'");
 		if (res == 0)
 			break;
+		size += res;
 		SHA_Update(&sha, (u_char *)buf, res);
 	}
 	SHA_Final(sha_res.complete, &sha);
@@ -121,7 +123,10 @@ static cksum sha1(path const & p)
 	{
 		cerr << files_read << endl;
 	}
-	return sha_res.prefix;
+	if (size)
+		return sha_res.prefix;
+	else
+		return 0;
 }
 
 
@@ -140,7 +145,8 @@ void dup_detect(path const & dir, cksum_map & cksums)
 		if (is_regular(it->path()))
 		{
 			cksum const sum = sha1(it->path());
-			cksums.insert(make_pair(sum, it->path().native()));
+			if (sum)
+				cksums.insert(make_pair(sum, it->path().native()));
 		}
 	}
 }
@@ -164,9 +170,15 @@ void print_dups(cksum_map & cksums)
 			if (tmp != it)
 			{
 				//more than one file, we've got duplicates
+				vector<string> dup_paths;
 				for (; range_start != it; ++range_start)
 				{
-					cout << range_start->second << "\t";
+					dup_paths.push_back(range_start->second);
+				}
+				sort(dup_paths.begin(), dup_paths.end());
+				for (vector<string>::const_iterator d = dup_paths.begin(); d != dup_paths.end(); ++d)
+				{
+					cout << *d << "\t";
 				}
 				cout << endl;
 			}
@@ -190,7 +202,8 @@ void fill_path_hashes(path const & dir, path_hashes & hashes, string const & dir
 		if (is_regular(it->path()))
 		{
 			cksum const sum = sha1(it->path());
-			hashes.insert(path_hash(dir_string + it->path().filename().native(), sum));
+			if (sum)
+				hashes.insert(path_hash(dir_string + it->path().filename().native(), sum));
 		}
 	}
 }
