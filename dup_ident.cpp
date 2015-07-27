@@ -78,8 +78,8 @@ private:
 	{
 		size_t const buf_len = 128;
 		char buf[buf_len];
-		strerror_r(err, buf, buf_len);
-		return operation + ": " + lexical_cast<string>(err) + " (" + buf + ")";
+		char const * const msg = strerror_r(err, buf, buf_len);
+		return operation + ": " + lexical_cast<string>(err) + " (" + msg + ")";
 	}
 
 	string msg;
