@@ -1,0 +1,8 @@
+message Path {
+	required string path = 1;
+	required uint64 cksum = 2;
+}
+
+message Paths {
+	repeated Path paths = 1;
+}

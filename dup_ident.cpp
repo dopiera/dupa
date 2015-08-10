@@ -6,6 +6,7 @@
 #include <openssl/sha.h>
 
 #include <exception>
+#include <fstream>
 #include <string>
 #include <map>
 
@@ -17,11 +18,15 @@
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/member.hpp>
+#include <boost/program_options.hpp>
+
+#include "protos/dup_ident.pb.h"
 
 using namespace std;
 using namespace boost;
 using namespace boost::filesystem;
 using namespace boost::multi_index;
+using namespace boost::program_options;
 
 typedef uint64_t cksum;
 
@@ -85,8 +90,169 @@ private:
 	string msg;
 };
 
+struct proto_exception : std::exception
+{
+	proto_exception(string const & reason) :
+		reason(reason)
+	{
+	}
 
-static cksum sha1(path const & p)
+	~proto_exception() throw()
+	{
+	}
+	
+	virtual char const * what() const throw()
+	{
+		return this->reason.c_str();
+	}
+private:
+	string reason;
+};
+
+class hash_cache
+{
+public:
+	struct initializer {
+		initializer(
+			string const & read_cache_from,
+			string const & dump_cache_to
+			);
+		~initializer();
+	};
+	static hash_cache & get();
+	cksum operator()(path const & p);
+private:
+	hash_cache(
+		string const & read_cache_from,
+		string const & dump_cache_to
+		);
+	~hash_cache();
+	cksum compute_cksum(path const & p);
+	void store_cksums();
+	void read_cksums(string const & path);
+	static void initialize(
+		string const & read_cache_from,
+		string const & dump_cache_to);
+	static void finalize();
+
+	static hash_cache * instance;
+
+	typedef multimap<string, cksum> cache_map;
+	cache_map cache;
+	int out_fd;
+};
+hash_cache * hash_cache::instance;
+
+hash_cache::initializer::initializer(
+	string const & read_cache_from,
+	string const & dump_cache_to
+	)
+{
+	hash_cache::initialize(read_cache_from, dump_cache_to);
+}
+
+hash_cache::initializer::~initializer()
+{
+	hash_cache::finalize();
+}
+
+hash_cache::hash_cache(
+	string const & read_cache_from,
+	string const & dump_cache_to
+	) :
+	out_fd(-1)
+{
+	if (!read_cache_from.empty())
+	{
+		this->read_cksums(read_cache_from.c_str());
+	}
+	if (!dump_cache_to.empty())
+	{
+		this->out_fd = open(
+			dump_cache_to.c_str(),
+			O_WRONLY | O_EXCL | O_CREAT,
+			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH
+			);
+		if (this->out_fd == -1)
+		{
+			throw fs_exception(errno, "open '" + dump_cache_to + "'");
+		}
+	}
+}
+
+hash_cache::~hash_cache()
+{
+	this->store_cksums();
+}
+
+void hash_cache::store_cksums()
+{
+	if (this->out_fd < 0)
+	{
+		return;
+	}
+	Paths paths;
+	for (cache_map::const_iterator cksum_it = this->cache.begin();
+			cksum_it != this->cache.end();
+			++cksum_it)
+	{
+		Path &p = *paths.add_paths();
+		p.set_path(cksum_it->first);
+		p.set_cksum(cksum_it->second);
+	}
+	if (!paths.SerializeToFileDescriptor(this->out_fd))
+	{
+		throw proto_exception("Failed to serialize cache; TODO: add more logging");
+	}
+	this->out_fd = close(this->out_fd);
+	if (this->out_fd < 0)
+	{
+		throw fs_exception(errno, "close dumped cache file");
+	}
+	
+}
+
+void hash_cache::read_cksums(string const & path)
+{
+	int fd;
+	fd = open(path.c_str(), O_RDONLY);
+	if (fd == -1)
+		throw fs_exception(errno, "open '" + path + "'");
+
+	Paths paths;
+	if (!paths.ParseFromFileDescriptor(fd))
+	{
+		throw proto_exception("parsing failed; TODO: reasonable message here");
+	}
+	this->cache.clear();
+	for (int i = 0; i < paths.paths_size(); ++i)
+	{
+		Path const & p = paths.paths(i);
+		this->cache.insert(make_pair(p.path(), p.cksum()));
+	}
+	fd = close(fd);
+	if (fd < 0)
+	{
+		throw fs_exception(errno, "close '" + path + "'");
+	}
+}
+
+cksum hash_cache::operator()(path const & p)
+{
+	cache_map::const_iterator it = this->cache.find(p.native());
+	if (it != this->cache.end())
+	{
+		return it->second;
+	}
+	else
+	{
+		cksum res = this->compute_cksum(p);
+		this->cache.insert(make_pair(p.native(), res));
+		return res;
+	}
+}
+
+cksum hash_cache::compute_cksum(path const & p)
 {
 	string const native = p.native();
 	int fd = open(native.c_str(), O_RDONLY);
@@ -124,6 +290,27 @@ static cksum sha1(path const & p)
 	return sha_res.prefix;
 }
 
+void hash_cache::initialize(
+	string const & read_cache_from,
+	string const & dump_cache_to)
+{
+	assert(!instance);
+	hash_cache::instance = new hash_cache(read_cache_from, dump_cache_to);
+}
+
+void hash_cache::finalize()
+{
+	assert(instance);
+	delete hash_cache::instance;
+	hash_cache::instance = NULL;
+}
+
+hash_cache & hash_cache::get()
+{
+	assert(hash_cache::instance);
+	return *hash_cache::instance;
+}
+
 
 void dup_detect(path const & dir, cksum_map & cksums)
 {
@@ -139,7 +326,7 @@ void dup_detect(path const & dir, cksum_map & cksums)
 		}
 		if (is_regular(it->path()))
 		{
-			cksum const sum = sha1(it->path());
+			cksum const sum = hash_cache::get()(it->path());
 			cksums.insert(make_pair(sum, it->path().native()));
 		}
 	}
@@ -189,7 +376,7 @@ void fill_path_hashes(path const & dir, path_hashes & hashes, string const & dir
 		}
 		if (is_regular(it->path()))
 		{
-			cksum const sum = sha1(it->path());
+			cksum const sum = hash_cache::get()(it->path());
 			hashes.insert(path_hash(dir_string + it->path().filename().native(), sum));
 		}
 	}
@@ -331,24 +518,69 @@ void dir_compare(path const & dir1, path const & dir2)
 
 int main(int argc, char **argv)
 {
-	if (argc == 2)
-	{
-		cksum_map cksums;
-		dup_detect(argv[1], cksums);
-		print_dups(cksums);
-		return 0;
-	}
-	if (argc == 3)
-	{
-		dir_compare(argv[1], argv[2]);
-		return 0;
-	}
-	else
-	{
-		cerr << "usage: " << argv[0] << " <dir>" << endl;
-		cerr << " or" << endl;
-		cerr << "usage: " << argv[0] << " <dir1> <dir2>" << endl;
+	string read_cache_from, dump_cache_to;
+	vector<string> dirs;
+
+	variables_map vm;
+	options_description hidden_desc("Hidden options");
+	hidden_desc.add_options()
+		("directory,d", value<vector<string> >(&dirs)->composing(),
+		 "directory to analyze");
+	options_description desc("usage: dup_ident dir1 [dir2]");
+	desc.add_options()
+		("help,h", "produce help message")
+		("read_cache_from,c", value<string>(&read_cache_from),
+		 "path to the file from which to read checksum cache")
+		("dump_cache_to,C", value<string>(&dump_cache_to),
+		 "path to which to dump the checksum cache");
+
+	try {
+		options_description effective_desc;
+		effective_desc.add(hidden_desc).add(desc);
+		positional_options_description p;
+		p.add("directory", 2);
+		store(command_line_parser(argc, argv).options(effective_desc).positional(p).run(), vm);
+		notify(vm);    
+	} catch (program_options::error const &e) {
+		cout << e.what() << endl;
+		cout << desc << endl;
 		return 1;
+	}
+
+	if (vm.count("help"))
+	{
+		cout << desc << endl;
+		return 0;
+	}
+
+	try {
+		hash_cache::initializer hash_cache_init(read_cache_from, dump_cache_to);
+
+		if (dirs.size() == 1)
+		{
+			cksum_map cksums;
+			dup_detect(dirs[0], cksums);
+			print_dups(cksums);
+			return 0;
+		}
+		if (dirs.size() == 2)
+		{
+			dir_compare(dirs[0], dirs[1]);
+			return 0;
+		}
+		else
+		{
+			if (dirs.empty())
+			{
+				cout << desc << endl;
+				return 1;
+			}
+		}
+	}
+	catch (ios_base::failure const & ex)
+	{
+		cerr << "Failure: " << ex.what() << endl;
+		throw;
 	}
 
 	return 0;
