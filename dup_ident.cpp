@@ -20,6 +20,9 @@
 #include <boost/multi_index/member.hpp>
 #include <boost/program_options.hpp>
 
+#include <google/protobuf/io/coded_stream.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+
 #include "protos/dup_ident.pb.h"
 
 using namespace std;
@@ -220,7 +223,11 @@ void hash_cache::read_cksums(string const & path)
 		throw fs_exception(errno, "open '" + path + "'");
 
 	Paths paths;
-	if (!paths.ParseFromFileDescriptor(fd))
+	google::protobuf::io::FileInputStream file_input(fd);
+	google::protobuf::io::CodedInputStream coded_input(&file_input);
+	coded_input.SetTotalBytesLimit(512 * 1024 * 1024, 512 * 1024 * 1024);
+	if (!paths.ParseFromCodedStream(&coded_input) ||
+		file_input.GetErrno() != 0)
 	{
 		throw proto_exception("parsing failed; TODO: reasonable message here");
 	}
