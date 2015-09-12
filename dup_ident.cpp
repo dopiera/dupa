@@ -23,7 +23,7 @@
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
-#include "protos/dup_ident.pb.h"
+#include "dup_ident.pb.h"
 
 using namespace std;
 using namespace boost;
