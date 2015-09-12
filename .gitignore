@@ -5,3 +5,4 @@ dup_ident
 CMakeCache.txt
 CMakeFiles
 cmake_install.cmake
+Makefile
