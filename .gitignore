@@ -2,3 +2,6 @@
 *.o
 dup_ident
 *.pb.*
+CMakeCache.txt
+CMakeFiles
+cmake_install.cmake
