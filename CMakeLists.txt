@@ -10,6 +10,7 @@ find_package(Boost COMPONENTS program_options filesystem system thread REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(OpenSSL REQUIRED)
 
+include_directories(third_party/gtest/include)
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${OpenSSL_INCLUDE_DIRS})
 include_directories(${PROTOBUF_INCLUDE_DIRS})
