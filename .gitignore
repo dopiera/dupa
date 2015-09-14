@@ -10,3 +10,4 @@ Makefile
 CTestTestfile.cmake
 Testing
 file_tree_test
+cscope.*
