@@ -51,7 +51,18 @@ include_directories(${GTEST_INCLUDE_DIRS})
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS protos/dup_ident.proto)
 
 add_library(dup_ident_proto ${PROTO_SRCS})
+
+add_library(exceptions_lib exceptions.cpp)
+target_link_libraries(exceptions_lib ${Boost_LIBRARIES})
+
 add_library(file_tree_lib file_tree.cpp)
+
+add_library(hash_cache_lib hash_cache.cpp)
+target_link_libraries(hash_cache_lib ${Boost_LIBRARIES})
+target_link_libraries(hash_cache_lib ${PROTOBUF_LIBRARIES})
+target_link_libraries(hash_cache_lib ${OPENSSL_CRYPTO_LIBRARY})
+target_link_libraries(hash_cache_lib exceptions_lib)
+target_link_libraries(hash_cache_lib dup_ident_proto)
 
 add_executable(file_tree_test file_tree_test.cpp)
 target_link_libraries(file_tree_test file_tree_lib)
@@ -60,8 +71,7 @@ add_test(file_tree_test file_tree_test)
 
 add_executable(dup_ident dup_ident.cpp)
 target_link_libraries(dup_ident ${Boost_LIBRARIES})
-target_link_libraries(dup_ident ${PROTOBUF_LIBRARIES})
-target_link_libraries(dup_ident ${OPENSSL_CRYPTO_LIBRARY})
-target_link_libraries(dup_ident dup_ident_proto)
 target_link_libraries(dup_ident file_tree_lib)
+target_link_libraries(dup_ident hash_cache_lib)
+target_link_libraries(dup_ident exceptions_lib)
 
