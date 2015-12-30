@@ -56,6 +56,7 @@ add_library(exceptions_lib exceptions.cpp)
 target_link_libraries(exceptions_lib ${Boost_LIBRARIES})
 
 add_library(file_tree_lib file_tree.cpp)
+target_link_libraries(file_tree_lib ${Boost_LIBRARIES})
 
 add_library(hash_cache_lib hash_cache.cpp)
 target_link_libraries(hash_cache_lib ${Boost_LIBRARIES})
