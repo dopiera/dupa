@@ -36,10 +36,13 @@ public:
 	bool IsReadyToEvaluate() const { return not_evaluated_children == 0; }
 	bool IsEvaluated() const { return eq_class != NULL; }
 	EqClass &GetEqClass() const { assert(eq_class); return *eq_class; }
+	Type GetType() const { return this->type; }
+	bool IsEmptyDir() const { return GetType() == DIR && children.empty(); }
 	boost::filesystem::path BuildPath() const;
 	double GetWeight() const;
+	Node * GetParent() { return parent; }
 	// Return all nodes which are evaluated and share a child with this one.
-	std::vector<Node const*> GetPossibleEquivalents() const;
+	Nodes GetPossibleEquivalents() const;
 	// Traverse the whole subtree (including this node) in a an unspecified
 	// order and call callback on every node
 	void Traverse(boost::function<void(Node*)> callback);
@@ -66,6 +69,7 @@ double NodeDistance(Node const &n1, Node const &n2);
 
 struct EqClass : private boost::noncopyable {
 	EqClass(): nodes(), weight() {}
+	bool IsEmpty() const { return nodes.empty(); }
 
 	void AddNode(Node &node); // does not take ownership
 	Nodes nodes;

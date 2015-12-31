@@ -127,7 +127,7 @@ TEST(NodeTest, GetPossibleEquivalents) {
 	EqClass upper_n2;
 	upper_n2.AddNode(n2);
 
-	std::vector<Node const *> expected;
+	Nodes expected;
 	expected.push_back(&n2);
 	ASSERT_EQ(n1.GetPossibleEquivalents(), expected);
 }

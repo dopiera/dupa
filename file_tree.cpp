@@ -83,9 +83,9 @@ boost::filesystem::path Node::BuildPath() const {
 	}
 }
 
-std::vector<Node const*> Node::GetPossibleEquivalents() const {
+Nodes Node::GetPossibleEquivalents() const {
 	assert(this->IsReadyToEvaluate());
-	std::tr1::unordered_set<Node const*> nodes;
+	std::tr1::unordered_set<Node*> nodes;
 	for (
 			Nodes::const_iterator child_it = this->children.begin();
 			child_it != this->children.end();
@@ -108,7 +108,7 @@ std::vector<Node const*> Node::GetPossibleEquivalents() const {
 			}
 		}
 	}
-	return std::vector<Node const*>(nodes.begin(), nodes.end());
+	return Nodes(nodes.begin(), nodes.end());
 }
 
 void Node::Traverse(boost::function<void(Node*)> callback) {

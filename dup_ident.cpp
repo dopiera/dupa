@@ -1,6 +1,5 @@
 #include <fstream>
 #include <string>
-#include <map>
 
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
@@ -11,6 +10,8 @@
 #include <boost/multi_index/member.hpp>
 #include <boost/program_options.hpp>
 
+#include "file_tree.h"
+#include "fuzzy_dedup.h"
 #include "hash_cache.h"
 
 using namespace std;
@@ -46,7 +47,6 @@ typedef multi_index_container<
 > path_hashes;
 typedef path_hashes::index<by_path>::type path_hashes_by_path;
 typedef path_hashes::index<by_hash>::type path_hashes_by_hash;
-
 
 void dup_detect(path const & dir, cksum_map & cksums)
 {
@@ -303,9 +303,26 @@ int main(int argc, char **argv)
 
 		if (dirs.size() == 1)
 		{
-			cksum_map cksums;
-			dup_detect(dirs[0], cksums);
-			print_dups(cksums);
+			//cksum_map cksums;
+			//dup_detect(dirs[0], cksums);
+			//print_dups(cksums);
+			FuzzyDedupRes res = fuzzy_dedup(dirs[0]);
+			for (
+					EqClasses::const_iterator it = res.second->begin();
+					it != res.second->end();
+					++it) {
+				assert(it->nodes.size() > 0);
+				if (it->nodes.size() == 1) {
+					continue;
+				}
+				for (
+						Nodes::const_iterator it2 = it->nodes.begin();
+						it2 != it->nodes.end();
+						++it2) {
+					cout << (*it2)->BuildPath().native() << " ";
+				}
+				cout << endl;
+			}
 			return 0;
 		}
 		if (dirs.size() == 2)

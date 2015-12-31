@@ -10,4 +10,5 @@ Makefile
 CTestTestfile.cmake
 Testing
 file_tree_test
+fuzzy_dedup_test
 cscope.*
