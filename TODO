@@ -1,0 +1,10 @@
+- more config options:
+  - acceptable percentage
+  - only generate cache
+- use size for weight
+- test for fuzzy_dedup
+- unify style
+- use inodes in cache
+- detect scatterred directories
+- less brutal error handling
+- better result printing
