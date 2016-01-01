@@ -2,7 +2,7 @@
 #define FILE_TREE_H_4234
 
 #include <cassert>
-#include <boost/function.hpp>
+#include <functional>
 #include <vector>
 #include <string>
 
@@ -45,7 +45,7 @@ public:
 	Nodes GetPossibleEquivalents() const;
 	// Traverse the whole subtree (including this node) in a an unspecified
 	// order and call callback on every node
-	void Traverse(boost::function<void(Node*)> callback);
+	void Traverse(std::function<void(Node*)> callback);
 
 	~Node();
 

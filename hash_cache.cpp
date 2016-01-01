@@ -30,7 +30,7 @@ public:
 	typedef std::pair<dev_t, ino_t> uuid;
 
 	std::pair<bool, cksum> get(uuid ino) {
-		std::tr1::unordered_map<uuid, cksum>::const_iterator it =
+		CacheMap::const_iterator it =
 			this->cache_map.find(ino);
 		if (it != this->cache_map.end()) {
 			return std::make_pair(true, it->second);
@@ -57,7 +57,8 @@ public:
 	}
 
 private:
-	std::tr1::unordered_map<uuid, cksum, boost::hash<uuid> > cache_map;
+	typedef std::unordered_map<uuid, cksum, boost::hash<uuid> > CacheMap;
+	CacheMap cache_map;
 };
 
 // I'm asking for trouble, but I'm lazy.
@@ -116,13 +117,11 @@ void hash_cache::store_cksums()
 		return;
 	}
 	Paths paths;
-	for (cache_map::const_iterator cksum_it = this->cache.begin();
-			cksum_it != this->cache.end();
-			++cksum_it)
+	for (auto const & cksum_and_path : this->cache)
 	{
 		Path &p = *paths.add_paths();
-		p.set_path(cksum_it->first);
-		p.set_cksum(cksum_it->second);
+		p.set_path(cksum_and_path.first);
+		p.set_cksum(cksum_and_path.second);
 	}
 	if (!paths.SerializeToFileDescriptor(this->out_fd))
 	{

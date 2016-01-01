@@ -1,9 +1,9 @@
 #include "fuzzy_dedup.h"
 
+#include <functional>
 #include <iostream>
 #include <stack>
 
-#include <boost/bind.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/convenience.hpp>
 
@@ -15,7 +15,7 @@ FuzzyDedupRes fuzzy_dedup(boost::filesystem::path const & dir)
 	// Scan the directory and compute checksums for regular files
 	std::pair<Node*, detail::Sum2Node> const root_and_sum_2_node =
 		detail::ScanDirectory(dir);
-	boost::shared_ptr<Node> root_node(root_and_sum_2_node.first);
+	std::shared_ptr<Node> root_node(root_and_sum_2_node.first);
 	detail::Sum2Node const &sum_2_node = root_and_sum_2_node.second;
 
 	// Create equivalence classes for all regular files
@@ -24,7 +24,7 @@ FuzzyDedupRes fuzzy_dedup(boost::filesystem::path const & dir)
 
 	// Create equivalence classes for all empty directories
 	{
-		std::auto_ptr<EqClass> empty_dirs_class =
+		std::unique_ptr<EqClass> empty_dirs_class =
 			detail::ClassifyEmptyDirs(*root_node);
 		if (!empty_dirs_class->IsEmpty()) {
 			eq_classes->push_back(empty_dirs_class.release());
@@ -52,7 +52,7 @@ std::pair<Node*, Sum2Node> ScanDirectory(boost::filesystem::path const & dir) {
 	std::stack<Node*> dirs_to_process;
 
 	res.first = new Node(Node::DIR, dir.native());
-	std::auto_ptr<Node> res_first_auto_deleter(res.first); // exception safety;
+	std::unique_ptr<Node> res_first_auto_deleter(res.first); // exception safety;
 	dirs_to_process.push(res.first);
 
 	while (!dirs_to_process.empty()) {
@@ -105,16 +105,16 @@ struct EmptyDirsEqClassFill {
 			eq_class->AddNode(*node);
 		}
 	}
-	std::auto_ptr<EqClass> eq_class;
+	std::unique_ptr<EqClass> eq_class;
 };
 
 } /* anonymous namespace */
 
-std::auto_ptr<EqClass> ClassifyEmptyDirs(Node &node) {
+std::unique_ptr<EqClass> ClassifyEmptyDirs(Node &node) {
 	EmptyDirsEqClassFill empty_dir_classifier;
-	node.Traverse(boost::bind(&EmptyDirsEqClassFill::OnNode,
-				boost::ref(empty_dir_classifier), _1));
-	return empty_dir_classifier.eq_class;
+	node.Traverse(std::bind(&EmptyDirsEqClassFill::OnNode,
+				std::ref(empty_dir_classifier), std::placeholders::_1));
+	return std::move(empty_dir_classifier.eq_class);
 }
 
 //======== ClassifyDuplicateFiles ==============================================
@@ -159,8 +159,8 @@ struct GatherReadyToEval {
 std::queue<Node*> GetNodesReadyToEval(Node &node)
 {
 	GatherReadyToEval gathered;
-	node.Traverse(boost::bind(&GatherReadyToEval::OnNode,
-				boost::ref(gathered), _1));
+	node.Traverse(std::bind(&GatherReadyToEval::OnNode,
+				std::ref(gathered), std::placeholders::_1));
 	return gathered.ready_to_evaluate;
 }
 
@@ -170,11 +170,7 @@ std::pair<Node*, double> GetClosestNode(Node const &ref,
 		Nodes const &candidates) {
 	double min_dist = 2;
 	Node *min_elem = NULL;
-	for (
-			Nodes::const_iterator node_it = candidates.begin();
-			node_it != candidates.end();
-			++node_it) {
-		Node * const candidate = *node_it;
+	for (Node * const candidate : candidates) {
 		assert(candidate != &ref);
 		assert(candidate->IsEvaluated());
 		double const distance = NodeDistance(ref, *candidate);

@@ -1,6 +1,7 @@
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required (VERSION 3.1)
 project (dup_ident C CXX)
 
+set (CMAKE_CXX_STANDARD 11)
 enable_testing()
 
 set(COMMON_FLAGS " -D_FILE_OFFSET_BITS=64 -rdynamic")

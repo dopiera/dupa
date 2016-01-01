@@ -4,8 +4,8 @@
 
 #include <cassert>
 
-#include <tr1/unordered_map>
-#include <tr1/unordered_set>
+#include <unordered_map>
+#include <unordered_set>
 
 void Node::AddChild(Node *child) {
 	assert(!IsEvaluated());
@@ -18,11 +18,8 @@ void Node::AddChild(Node *child) {
 }
 
 Node::~Node() {
-	for (
-		Nodes::const_iterator it = this->children.begin();
-	 	it != this->children.end();
-		++it) {
-		delete *it;
+	for (Node *n : this->children) {
+		delete n;
 	}
 }
 
@@ -46,24 +43,16 @@ double Node::GetWeight() const {
 			return 1;
 		case DIR:
 			{
-				std::tr1::unordered_set<EqClass*> eq_classes;
+				std::unordered_set<EqClass*> eq_classes;
 				double weight = 0;
-				for (
-					Nodes::const_iterator it = children.begin();
-					it != children.end();
-					++it)
+				for (Node const * const n : this->children)
 				{
-					Node const * const n = *it;
 					assert(n->IsEvaluated());
 					eq_classes.insert(&n->GetEqClass());
 				}
-				for (
-					std::tr1::unordered_set<EqClass*>::const_iterator it =
-						eq_classes.begin();
-					it != eq_classes.end();
-					++it)
+				for (EqClass const * const eq_class : eq_classes)
 				{
-					weight += (*it)->weight;
+					weight += eq_class->weight;
 				}
 				return weight;
 			}
@@ -85,39 +74,27 @@ boost::filesystem::path Node::BuildPath() const {
 
 Nodes Node::GetPossibleEquivalents() const {
 	assert(this->IsReadyToEvaluate());
-	std::tr1::unordered_set<Node*> nodes;
-	for (
-			Nodes::const_iterator child_it = this->children.begin();
-			child_it != this->children.end();
-			++child_it)
+	std::unordered_set<Node*> nodes;
+	for (Node const *child : this->children)
 	{
-		Node const & child = **child_it;
-		assert(child.IsEvaluated());
-		for (
-				Nodes::const_iterator equivalent_it =
-					child.eq_class->nodes.begin();
-				equivalent_it != child.eq_class->nodes.end();
-				++equivalent_it)
+		assert(child->IsEvaluated());
+		for (Node const *equivalent : child->eq_class->nodes)
 		{
-			Node const & equivalent = **equivalent_it;
-			assert(equivalent.IsEvaluated());
-			if (&equivalent != &child && equivalent.parent &&
-					equivalent.parent->IsEvaluated() &&
-					equivalent.parent != this) {
-				nodes.insert(equivalent.parent);
+			assert(equivalent->IsEvaluated());
+			if (equivalent != child && equivalent->parent &&
+					equivalent->parent->IsEvaluated() &&
+					equivalent->parent != this) {
+				nodes.insert(equivalent->parent);
 			}
 		}
 	}
 	return Nodes(nodes.begin(), nodes.end());
 }
 
-void Node::Traverse(boost::function<void(Node*)> callback) {
-	for (
-			Nodes::const_iterator child_it = this->children.begin();
-			child_it != this->children.end();
-			++child_it)
+void Node::Traverse(std::function<void(Node*)> callback) {
+	for (Node * const child : this->children)
 	{
-		(*child_it)->Traverse(callback);
+		child->Traverse(callback);
 	}
 	callback(this);
 }
@@ -129,24 +106,16 @@ double NodeDistance(Node const &n1, Node const &n2) {
 	// hash table for efficiency.
 	assert(n1.type != Node::FILE || n2.type != Node::FILE);
 
-	std::tr1::unordered_map<EqClass *, bool> eq_classes1;
-	std::tr1::unordered_set<EqClass *> eq_classes_only_2;
+	std::unordered_map<EqClass *, bool> eq_classes1;
+	std::unordered_set<EqClass *> eq_classes_only_2;
 
-	for (
-		Nodes::const_iterator it = n1.children.begin();
-		it != n1.children.end();
-		++it)
+	for (Node const * const n  : n1.children)
 	{
-		Node const * const n = *it;
 		eq_classes1.insert(std::make_pair(n->eq_class, false));
 	}
-	for (
-		Nodes::const_iterator it = n2.children.begin();
-		it != n2.children.end();
-		++it)
+	for (Node const * const n  : n2.children)
 	{
-		Node const * const n = *it;
-		std::tr1::unordered_map<EqClass *, bool>::iterator in1_it =
+		std::unordered_map<EqClass *, bool>::iterator in1_it =
 			eq_classes1.find(n->eq_class);
 		if (in1_it == eq_classes1.end()) {
 			eq_classes_only_2.insert(n->eq_class);
@@ -160,26 +129,17 @@ double NodeDistance(Node const &n1, Node const &n2) {
 	uint64_t sum = 0;
 	uint64_t sym_diff = 0;
 
-	for (
-		std::tr1::unordered_map<EqClass *, bool>::const_iterator it =
-			eq_classes1.begin();
-		it != eq_classes1.end();
-		++it)
-	{
-		sum += it->first->weight;
-		if (not it->second) {
+	for (auto const &eq_class_and_intersect : eq_classes1) {
+		sum += eq_class_and_intersect.first->weight;
+		if (not eq_class_and_intersect.second) {
 			// only in n1
-			sym_diff += it->first->weight;
+			sym_diff += eq_class_and_intersect.first->weight;
 		}
 	}
-	for (
-		std::tr1::unordered_set<EqClass *>::const_iterator it =
-			eq_classes_only_2.begin();
-		it != eq_classes_only_2.end();
-		++it)
+	for (EqClass const * const eq_class : eq_classes_only_2)
 	{
-		sum += (*it)->weight;
-		sym_diff += (*it)->weight;
+		sum += eq_class->weight;
+		sym_diff += eq_class->weight;
 	}
 	if (sum == 0) {
 		// both are empty directories, so they are the same

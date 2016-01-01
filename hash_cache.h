@@ -3,9 +3,10 @@
 
 #include <stdint.h>
 
+#include <mutex>
 #include <string>
 
-#include <tr1/unordered_map>
+#include <unordered_map>
 
 #include <boost/filesystem/path.hpp>
 
@@ -39,7 +40,7 @@ private:
 
 	static hash_cache * instance;
 
-	typedef std::tr1::unordered_map<std::string, cksum> cache_map;
+	typedef std::unordered_map<std::string, cksum> cache_map;
 	cache_map cache;
 	int out_fd;
 };

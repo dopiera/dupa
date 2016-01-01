@@ -1,9 +1,9 @@
 #include "file_tree.h"
 
+#include <functional>
+#include <memory>
 #include <utility>
 
-#include <boost/bind.hpp>
-#include <boost/smart_ptr/shared_ptr.hpp>
 #include <boost/ptr_container/ptr_vector.hpp>
 
 #include "gtest/gtest.h"
@@ -25,7 +25,7 @@ void PrintTo(Node const*n, std::ostream  *os) {
 }
 
 typedef boost::ptr_vector<EqClass> EqClasses;
-typedef boost::shared_ptr<EqClasses> EqClassesPtr;
+typedef std::shared_ptr<EqClasses> EqClassesPtr;
 typedef std::pair<Node*, EqClassesPtr> NodeAndClasses;
 static NodeAndClasses CreateNodeWithWeight(int weight) {
 	EqClassesPtr eq_classes(new EqClasses);
@@ -157,7 +157,8 @@ TEST(NodeTest, Traverse) {
 	std::sort(expected.begin(), expected.end());
 
 	NodeGatherer gatherer;
-	n1.Traverse(boost::bind(&NodeGatherer::OnNode, boost::ref(gatherer), _1));
+	n1.Traverse(std::bind(&NodeGatherer::OnNode, std::ref(gatherer),
+				std::placeholders::_1));
 	std::sort(gatherer.nodes.begin(), gatherer.nodes.end());
 	ASSERT_EQ(gatherer.nodes, expected);
 }

@@ -1,8 +1,7 @@
 #include <fstream>
 #include <string>
+#include <thread>
 
-#include <boost/thread.hpp>
-#include <boost/bind.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/convenience.hpp>
 #include <boost/multi_index_container.hpp>
@@ -54,28 +53,21 @@ struct NodePathOrder : public std::binary_function<Node*, Node*, bool> {
 };
 
 void print_fuzzy_dups(FuzzyDedupRes const &res) {
-	for (
-			EqClasses::const_iterator eq_class_it = res.second->begin();
-			eq_class_it != res.second->end();
-			++eq_class_it) {
-		assert(eq_class_it->nodes.size() > 0);
-		if (eq_class_it->nodes.size() == 1) {
+	for (EqClass const &eq_class : *res.second) {
+		assert(eq_class.nodes.size() > 0);
+		if (eq_class.nodes.size() == 1) {
 			continue;
 		}
 		bool all_parents_are_dups = true;
-		for (
-				Nodes::const_iterator node_it = eq_class_it->nodes.begin();
-				node_it != eq_class_it->nodes.end();
-				++node_it) {
-			Node &node = **node_it;
-			if (node.GetParent() == NULL ||
-					node.GetParent()->GetEqClass().IsSingle()) {
+		for (Node *node : eq_class.nodes) {
+			if (node->GetParent() == NULL ||
+					node->GetParent()->GetEqClass().IsSingle()) {
 				all_parents_are_dups = false;
 			}
 		}
 		if (all_parents_are_dups)
 			continue;
-		Nodes to_print(eq_class_it->nodes);
+		Nodes to_print(eq_class.nodes);
 		std::sort(to_print.begin(), to_print.end(), NodePathOrder());
 		for (
 				Nodes::const_iterator node_it = to_print.begin();
@@ -130,13 +122,8 @@ S & operator<<(S & stream, paths const & p)
 paths get_paths_for_hash(path_hashes_by_hash & ps, cksum hash)
 {
 	paths res;
-	for (
-		path_hashes_by_hash::const_iterator it = ps.lower_bound(hash);
-		it->hash == hash;
-		++it
-		)
-	{
-		res.push_back(it->path);
+	for (auto r = ps.equal_range(hash); r.first != r.second; ++r.first) {
+		res.push_back(r.first->path);
 	}
 	return res;
 }
@@ -145,8 +132,10 @@ void dir_compare(path const & dir1, path const & dir2)
 {
 	path_hashes hashes1, hashes2;
 
-	boost::thread h1filler(boost::bind(fill_path_hashes, ref(dir1), ref(hashes1), ""));
-	boost::thread h2filler(boost::bind(fill_path_hashes, ref(dir2), ref(hashes2), ""));
+	std::thread h1filler(std::bind(
+				fill_path_hashes, std::ref(dir1), std::ref(hashes1), ""));
+	std::thread h2filler(
+			std::bind(fill_path_hashes, std::ref(dir2), std::ref(hashes2), ""));
 	h1filler.join();
 	h2filler.join();
 
@@ -155,14 +144,10 @@ void dir_compare(path const & dir1, path const & dir2)
 	path_hashes_by_hash & hashes1h(hashes1.get<by_hash>());
 	path_hashes_by_hash & hashes2h(hashes2.get<by_hash>());
 
-	for (
-		path_hashes_by_path::const_iterator it = hashes1p.begin();
-		it != hashes1p.end();
-		++it
-		)
+	for (auto const &path_and_hash : hashes1p)
 	{
-		string const & p1 = it->path;
-		cksum h1 = it->hash;
+		string const & p1 = path_and_hash.path;
+		cksum h1 = path_and_hash.hash;
 		path_hashes_by_path::const_iterator const same_path = hashes2p.find(p1);
 		if (same_path != hashes2p.end())
 		{
@@ -199,14 +184,10 @@ void dir_compare(path const & dir1, path const & dir2)
 			}
 		}
 	}
-	for (
-		path_hashes_by_path::const_iterator it = hashes2p.begin();
-		it != hashes2p.end();
-		++it
-		)
+	for (auto const &path_and_hash : hashes2p)
 	{
-		string const & p2 = it->path;
-		cksum h2 = it->hash;
+		string const & p2 = path_and_hash.path;
+		cksum h2 = path_and_hash.hash;
 		if (hashes1p.find(p2) != hashes1p.end())
 		{
 			//path exists in both, so it has already been handled by the first
@@ -219,15 +200,11 @@ void dir_compare(path const & dir1, path const & dir2)
 			if (not ps.empty())
 			{
 				paths ps2;
-				for (
-					paths::const_iterator copy_candidate = ps.begin();
-					copy_candidate != ps.end();
-					++copy_candidate
-					)
+				for (auto const & copy_candidate : ps)
 				{
-					if (hashes2p.find(*copy_candidate) != hashes2p.end())
+					if (hashes2p.find(copy_candidate) != hashes2p.end())
 					{
-						ps2.push_back(*copy_candidate);
+						ps2.push_back(copy_candidate);
 					}
 					//otherwise it's probably renamed from that file, so it's
 					//already mentioned
@@ -301,13 +278,9 @@ int main(int argc, char **argv)
 		hash_cache::initializer hash_cache_init(read_cache_from, dump_cache_to);
 
 		if (vm.count("cache_only")) {
-			boost::ptr_vector<boost::thread> threads;
-			for (
-					vector<string>::const_iterator dir_it = dirs.begin();
-					dir_it != dirs.end();
-					++dir_it) {
+			for (auto const &dir : dirs) {
 				path_hashes hashes;
-				fill_path_hashes(*dir_it, hashes, "");
+				fill_path_hashes(dir, hashes, "");
 			}
 			return 0;
 		}
