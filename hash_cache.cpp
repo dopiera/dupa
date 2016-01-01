@@ -179,7 +179,7 @@ cksum hash_cache::operator()(boost::filesystem::path const & p)
 		this->cache.insert(make_pair(p.native(), res));
 		if (this->cache.size() % 1000 == 0)
 		{
-			std::cerr << this->cache.size() << std::endl;
+			LOG(INFO, this->cache.size());
 		}
 		return res;
 	}
