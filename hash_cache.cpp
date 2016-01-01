@@ -1,18 +1,69 @@
 #include "hash_cache.h"
 
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
-#include <iostream>
+#include <utility>
 
 #include <openssl/sha.h>
+
+#include <boost/functional/hash/hash.hpp>
 
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
 #include "exceptions.h"
 #include "dup_ident.pb.h"
+#include "log.h"
+
+namespace {
+
+// This is not stored because it is likely to have false positive matches when
+// inodes are reused. It is also not populated on hash_cache deserialization
+// because it's doubtful to bring much gain and is guaranteed to cost a lot if
+// we stat all the files.
+class inode_cache {
+public:
+	typedef std::pair<dev_t, ino_t> uuid;
+
+	std::pair<bool, cksum> get(uuid ino) {
+		std::tr1::unordered_map<uuid, cksum>::const_iterator it =
+			this->cache_map.find(ino);
+		if (it != this->cache_map.end()) {
+			return std::make_pair(true, it->second);
+		} else {
+			return std::make_pair(false, 0);
+		}
+	}
+
+	void update(uuid ino, cksum sum) {
+		this->cache_map.insert(std::make_pair(ino, sum));
+	}
+
+	static uuid get_inode(int fd, std::string const &path_for_errors) {
+		struct stat st;
+		int res = fstat(fd, &st);
+		if (res != 0) {
+			throw fs_exception(errno, "stat on '" + path_for_errors + "'");
+		}
+		if (!S_ISREG(st.st_mode)) {
+			throw fs_exception(errno, "'" + path_for_errors +
+					"' is not a regular file");
+		}
+		return std::make_pair(st.st_dev, st.st_ino);
+	}
+
+private:
+	std::tr1::unordered_map<uuid, cksum, boost::hash<uuid> > cache_map;
+};
+
+// I'm asking for trouble, but I'm lazy.
+static inode_cache ino_cache;
+
+} /* anonymous namespace */
 
 hash_cache * hash_cache::instance;
 
@@ -134,12 +185,41 @@ cksum hash_cache::operator()(boost::filesystem::path const & p)
 	}
 }
 
+namespace {
+
+struct auto_fd_closer {
+	auto_fd_closer(int fd) : fd(fd) {}
+	~auto_fd_closer() {
+		int res = close(fd);
+		if (res < 0) {
+			// This is unlikely to happen and if it happens it is likely to be
+			// while already handling some other more important exception, so
+			// let's not cover the original error.
+			LOG(WARNING, "Failed to close descriptor " << fd);
+		}
+	}
+private:
+	int fd;
+};
+
+} /* anonymous namespace */
+
 cksum hash_cache::compute_cksum(boost::filesystem::path const & p)
 {
 	std::string const native = p.native();
 	int fd = open(native.c_str(), O_RDONLY);
 	if (fd == -1)
 		throw fs_exception(errno, "open '" + native + "'");
+	auto_fd_closer closer(fd);
+
+	inode_cache::uuid uuid = ino_cache.get_inode(fd, native);
+	{
+		std::pair<bool, cksum> sum = ino_cache.get(uuid);
+		if (sum.first) {
+			DLOG(native << " shares an inode with something already computed!");
+			return sum.second;
+		}
+	}
 
 	size_t const buf_size = 131072;
 	char buf[buf_size];
@@ -164,9 +244,7 @@ cksum hash_cache::compute_cksum(boost::filesystem::path const & p)
 	}
 	SHA_Final(sha_res.complete, &sha);
 
-	fd = close(fd);
-	if (fd < 0)
-		throw fs_exception(errno, "close '" + native + "'");
+	ino_cache.update(uuid, sha_res.prefix);
 	if (size)
 		return sha_res.prefix;
 	else
