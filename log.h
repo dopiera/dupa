@@ -23,7 +23,7 @@ extern LogLevel stderr_loglevel;
 	} while (0)
 
 #ifndef NDEBUG
-#define DLOG(message) LOG(DEBUG, (message))
+#define DLOG(message) LOG(DEBUG, message)
 #else
 #define DLOG(message) do {} while (0)
 #endif /* NDEBUG */
