@@ -245,9 +245,16 @@ void dir_compare(path const & dir1, path const & dir2)
 	}
 }
 
+static void print_compilation_profile_warning() {
+	LogLevel ll = stderr_loglevel;
+	stderr_loglevel = DEBUG;
+	DLOG("This is a debug build, performance might suck.");
+	stderr_loglevel = ll;
+}
+
 int main(int argc, char **argv)
 {
-	DLOG("This is a debug build, performance might suck.");
+	print_compilation_profile_warning();
 	string read_cache_from, dump_cache_to;
 	vector<string> dirs;
 
