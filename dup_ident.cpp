@@ -47,6 +47,12 @@ typedef multi_index_container<
 typedef path_hashes::index<by_path>::type path_hashes_by_path;
 typedef path_hashes::index<by_hash>::type path_hashes_by_hash;
 
+struct NodePathOrder : public std::binary_function<Node*, Node*, bool> {
+	bool operator()(Node* n1, Node* n2) const {
+		return n1->BuildPath().native() < n2->BuildPath().native();
+	}
+};
+
 void print_fuzzy_dups(FuzzyDedupRes const &res) {
 	for (
 			EqClasses::const_iterator eq_class_it = res.second->begin();
@@ -56,11 +62,29 @@ void print_fuzzy_dups(FuzzyDedupRes const &res) {
 		if (eq_class_it->nodes.size() == 1) {
 			continue;
 		}
+		bool all_parents_are_dups = true;
 		for (
 				Nodes::const_iterator node_it = eq_class_it->nodes.begin();
 				node_it != eq_class_it->nodes.end();
 				++node_it) {
-			cout << (*node_it)->BuildPath().native() << " ";
+			Node &node = **node_it;
+			if (node.GetParent() == NULL ||
+					node.GetParent()->GetEqClass().IsSingle()) {
+				all_parents_are_dups = false;
+			}
+		}
+		if (all_parents_are_dups)
+			continue;
+		Nodes to_print(eq_class_it->nodes);
+		std::sort(to_print.begin(), to_print.end(), NodePathOrder());
+		for (
+				Nodes::const_iterator node_it = to_print.begin();
+				node_it != to_print.end();
+				++node_it) {
+			cout << (*node_it)->BuildPath().native();
+			if (--to_print.end() != node_it) {
+				cout << " ";
+			}
 		}
 		cout << endl;
 	}

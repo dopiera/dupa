@@ -70,6 +70,7 @@ double NodeDistance(Node const &n1, Node const &n2);
 struct EqClass : private boost::noncopyable {
 	EqClass(): nodes(), weight() {}
 	bool IsEmpty() const { return nodes.empty(); }
+	bool IsSingle() const { return nodes.size() == 1; }
 
 	void AddNode(Node &node); // does not take ownership
 	Nodes nodes;
