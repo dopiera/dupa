@@ -10,6 +10,7 @@
 #include <boost/multi_index/member.hpp>
 #include <boost/program_options.hpp>
 
+#include "log.h"
 #include "file_tree.h"
 #include "fuzzy_dedup.h"
 #include "hash_cache.h"
@@ -262,6 +263,7 @@ void dir_compare(path const & dir1, path const & dir2)
 
 int main(int argc, char **argv)
 {
+	DLOG("This is a debug build, performance might suck.");
 	string read_cache_from, dump_cache_to;
 	vector<string> dirs;
 

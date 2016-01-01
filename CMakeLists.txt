@@ -52,6 +52,8 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS protos/dup_ident.proto)
 
 add_library(dup_ident_proto ${PROTO_SRCS})
 
+add_library(log_lib log.cpp)
+
 add_library(exceptions_lib exceptions.cpp)
 target_link_libraries(exceptions_lib ${Boost_LIBRARIES})
 
@@ -68,6 +70,7 @@ target_link_libraries(hash_cache_lib ${Boost_LIBRARIES})
 target_link_libraries(hash_cache_lib ${PROTOBUF_LIBRARIES})
 target_link_libraries(hash_cache_lib ${OPENSSL_CRYPTO_LIBRARY})
 target_link_libraries(hash_cache_lib exceptions_lib)
+target_link_libraries(hash_cache_lib log_lib)
 target_link_libraries(hash_cache_lib dup_ident_proto)
 
 add_library(fuzzy_dedup_lib fuzzy_dedup.cpp)
@@ -86,4 +89,5 @@ target_link_libraries(dup_ident file_tree_lib)
 target_link_libraries(dup_ident hash_cache_lib)
 target_link_libraries(dup_ident exceptions_lib)
 target_link_libraries(dup_ident fuzzy_dedup_lib)
+target_link_libraries(dup_ident log_lib)
 
