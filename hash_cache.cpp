@@ -30,6 +30,7 @@ public:
 	typedef std::pair<dev_t, ino_t> uuid;
 
 	std::pair<bool, cksum> get(uuid ino) {
+		std::lock_guard<std::mutex> lock(this->mutex);
 		CacheMap::const_iterator it =
 			this->cache_map.find(ino);
 		if (it != this->cache_map.end()) {
@@ -40,6 +41,7 @@ public:
 	}
 
 	void update(uuid ino, cksum sum) {
+		std::lock_guard<std::mutex> lock(this->mutex);
 		this->cache_map.insert(std::make_pair(ino, sum));
 	}
 
@@ -59,6 +61,7 @@ public:
 private:
 	typedef std::unordered_map<uuid, cksum, boost::hash<uuid> > CacheMap;
 	CacheMap cache_map;
+	std::mutex mutex;
 };
 
 // I'm asking for trouble, but I'm lazy.
@@ -112,6 +115,7 @@ hash_cache::~hash_cache()
 
 void hash_cache::store_cksums()
 {
+	std::lock_guard<std::mutex> lock(this->mutex);
 	if (this->out_fd < 0)
 	{
 		return;
@@ -138,6 +142,7 @@ void hash_cache::store_cksums()
 
 void hash_cache::read_cksums(std::string const & path)
 {
+	std::lock_guard<std::mutex> lock(this->mutex);
 	int fd;
 	fd = open(path.c_str(), O_RDONLY);
 	if (fd == -1)
@@ -167,21 +172,25 @@ void hash_cache::read_cksums(std::string const & path)
 
 cksum hash_cache::operator()(boost::filesystem::path const & p)
 {
-	cache_map::const_iterator it = this->cache.find(p.native());
-	if (it != this->cache.end())
 	{
-		return it->second;
-	}
-	else
-	{
-		cksum res = this->compute_cksum(p);
-		this->cache.insert(make_pair(p.native(), res));
-		if (this->cache.size() % 1000 == 0)
+		std::lock_guard<std::mutex> lock(this->mutex);
+		cache_map::const_iterator it = this->cache.find(p.native());
+		if (it != this->cache.end())
 		{
-			LOG(INFO, this->cache.size());
+			return it->second;
 		}
-		return res;
 	}
+	cksum res = this->compute_cksum(p);
+
+	std::lock_guard<std::mutex> lock(this->mutex);
+	// If some other thread inserted a checksum for the same file in the
+	// meantime, it's not a big deal.
+	this->cache.insert(make_pair(p.native(), res));
+	if (this->cache.size() % 1000 == 0)
+	{
+		LOG(INFO, this->cache.size());
+	}
+	return res;
 }
 
 namespace {

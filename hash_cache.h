@@ -30,7 +30,7 @@ private:
 		std::string const & dump_cache_to
 		);
 	~hash_cache();
-	cksum compute_cksum(boost::filesystem::path const & p);
+	static cksum compute_cksum(boost::filesystem::path const & p);
 	void store_cksums();
 	void read_cksums(std::string const & path);
 	static void initialize(
@@ -42,6 +42,7 @@ private:
 
 	typedef std::unordered_map<std::string, cksum> cache_map;
 	cache_map cache;
+	std::mutex mutex;
 	int out_fd;
 };
 
