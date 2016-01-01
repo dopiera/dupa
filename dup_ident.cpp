@@ -270,7 +270,8 @@ int main(int argc, char **argv)
 		 "path to the file from which to read checksum cache")
 		("dump_cache_to,C", value<string>(&dump_cache_to),
 		 "path to which to dump the checksum cache")
-		("verbose,v", "Be verbose");
+		("cache_only,1", "only generate checksums cache")
+		("verbose,v", "be verbose");
 
 	try {
 		options_description effective_desc;
@@ -299,6 +300,17 @@ int main(int argc, char **argv)
 	try {
 		hash_cache::initializer hash_cache_init(read_cache_from, dump_cache_to);
 
+		if (vm.count("cache_only")) {
+			boost::ptr_vector<boost::thread> threads;
+			for (
+					vector<string>::const_iterator dir_it = dirs.begin();
+					dir_it != dirs.end();
+					++dir_it) {
+				path_hashes hashes;
+				fill_path_hashes(*dir_it, hashes, "");
+			}
+			return 0;
+		}
 		if (dirs.size() == 1)
 		{
 			FuzzyDedupRes res = fuzzy_dedup(dirs[0]);
