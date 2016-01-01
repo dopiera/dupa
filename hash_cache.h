@@ -3,8 +3,9 @@
 
 #include <stdint.h>
 
-#include <map>
 #include <string>
+
+#include <tr1/unordered_map>
 
 #include <boost/filesystem/path.hpp>
 
@@ -38,7 +39,7 @@ private:
 
 	static hash_cache * instance;
 
-	typedef std::map<std::string, cksum> cache_map;
+	typedef std::tr1::unordered_map<std::string, cksum> cache_map;
 	cache_map cache;
 	int out_fd;
 };
