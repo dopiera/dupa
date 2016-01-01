@@ -35,8 +35,6 @@ struct path_hash
 	cksum hash;
 };
 
-typedef multimap<cksum, string> cksum_map;
-
 struct by_path {};
 struct by_hash {};
 typedef multi_index_container<
@@ -49,60 +47,22 @@ typedef multi_index_container<
 typedef path_hashes::index<by_path>::type path_hashes_by_path;
 typedef path_hashes::index<by_hash>::type path_hashes_by_hash;
 
-void dup_detect(path const & dir, cksum_map & cksums)
-{
-	for (directory_iterator it(dir); it != directory_iterator(); ++it)
-	{
-		if (is_symlink(it->path()))
-		{
+void print_fuzzy_dups(FuzzyDedupRes const &res) {
+	for (
+			EqClasses::const_iterator it = res.second->begin();
+			it != res.second->end();
+			++it) {
+		assert(it->nodes.size() > 0);
+		if (it->nodes.size() == 1) {
 			continue;
 		}
-		if (is_directory(it->status()))
-		{
-			dup_detect(it->path(), cksums);
+		for (
+				Nodes::const_iterator it2 = it->nodes.begin();
+				it2 != it->nodes.end();
+				++it2) {
+			cout << (*it2)->BuildPath().native() << " ";
 		}
-		if (is_regular(it->path()))
-		{
-			cksum const sum = hash_cache::get()(it->path());
-			if (sum)
-				cksums.insert(make_pair(sum, it->path().native()));
-		}
-	}
-}
-
-void print_dups(cksum_map & cksums)
-{
-	cksum_map::const_iterator range_start;
-	for (cksum_map::const_iterator it = cksums.begin(); it != cksums.end(); ++it)
-	{
-		if (it == cksums.begin())
-		{
-			range_start = it;
-			continue;
-		}
-		if (it->first != range_start->first)
-		{
-			//next hash
-			cksum_map::const_iterator tmp = range_start;
-			++tmp;
-
-			if (tmp != it)
-			{
-				//more than one file, we've got duplicates
-				vector<string> dup_paths;
-				for (; range_start != it; ++range_start)
-				{
-					dup_paths.push_back(range_start->second);
-				}
-				sort(dup_paths.begin(), dup_paths.end());
-				for (vector<string>::const_iterator d = dup_paths.begin(); d != dup_paths.end(); ++d)
-				{
-					cout << *d << "\t";
-				}
-				cout << endl;
-			}
-			range_start = it;
-		}
+		cout << endl;
 	}
 }
 
@@ -310,27 +270,8 @@ int main(int argc, char **argv)
 
 		if (dirs.size() == 1)
 		{
-			//cksum_map cksums;
-			//dup_detect(dirs[0], cksums);
-			//print_dups(cksums);
 			FuzzyDedupRes res = fuzzy_dedup(dirs[0]);
-			for (
-					EqClasses::const_iterator it = res.second->begin();
-					it != res.second->end();
-					++it) {
-				assert(it->nodes.size() > 0);
-				if (it->nodes.size() == 1) {
-					continue;
-				}
-				for (
-						Nodes::const_iterator it2 = it->nodes.begin();
-						it2 != it->nodes.end();
-						++it2) {
-					cout << (*it2)->BuildPath().native() << " ";
-				}
-				cout << endl;
-			}
-			return 0;
+			print_fuzzy_dups(res);
 		}
 		if (dirs.size() == 2)
 		{
