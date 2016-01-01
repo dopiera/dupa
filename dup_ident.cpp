@@ -49,18 +49,18 @@ typedef path_hashes::index<by_hash>::type path_hashes_by_hash;
 
 void print_fuzzy_dups(FuzzyDedupRes const &res) {
 	for (
-			EqClasses::const_iterator it = res.second->begin();
-			it != res.second->end();
-			++it) {
-		assert(it->nodes.size() > 0);
-		if (it->nodes.size() == 1) {
+			EqClasses::const_iterator eq_class_it = res.second->begin();
+			eq_class_it != res.second->end();
+			++eq_class_it) {
+		assert(eq_class_it->nodes.size() > 0);
+		if (eq_class_it->nodes.size() == 1) {
 			continue;
 		}
 		for (
-				Nodes::const_iterator it2 = it->nodes.begin();
-				it2 != it->nodes.end();
-				++it2) {
-			cout << (*it2)->BuildPath().native() << " ";
+				Nodes::const_iterator node_it = eq_class_it->nodes.begin();
+				node_it != eq_class_it->nodes.end();
+				++node_it) {
+			cout << (*node_it)->BuildPath().native() << " ";
 		}
 		cout << endl;
 	}
