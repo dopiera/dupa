@@ -278,7 +278,8 @@ int main(int argc, char **argv)
 		("read_cache_from,c", value<string>(&read_cache_from),
 		 "path to the file from which to read checksum cache")
 		("dump_cache_to,C", value<string>(&dump_cache_to),
-		 "path to which to dump the checksum cache");
+		 "path to which to dump the checksum cache")
+		("verbose,v", "Be verbose");
 
 	try {
 		options_description effective_desc;
@@ -292,6 +293,10 @@ int main(int argc, char **argv)
 		cout << e.what() << endl;
 		cout << desc << endl;
 		return 1;
+	}
+
+	if (vm.count("verbose")) {
+		stderr_loglevel = DEBUG;
 	}
 
 	if (vm.count("help"))
