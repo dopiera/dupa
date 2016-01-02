@@ -252,11 +252,13 @@ cksum hash_cache::compute_cksum(boost::filesystem::path const & p)
 	}
 	SHA_Final(sha_res.complete, &sha);
 
-	ino_cache.update(uuid, sha_res.prefix);
-	if (size)
+	if (size) {
+		ino_cache.update(uuid, sha_res.prefix);
 		return sha_res.prefix;
-	else
+	} else {
+		ino_cache.update(uuid, 0);
 		return 0;
+	}
 }
 
 void hash_cache::initialize(
