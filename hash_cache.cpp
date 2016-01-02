@@ -229,8 +229,8 @@ cksum hash_cache::compute_cksum(boost::filesystem::path const & p)
 		}
 	}
 
-	size_t const buf_size = 131072;
-	char buf[buf_size];
+	size_t const buf_size = 1024 * 1024;
+	std::unique_ptr<char[]> buf(new char[buf_size]);
 
 	union {
 		u_char complete[20];
@@ -242,13 +242,13 @@ cksum hash_cache::compute_cksum(boost::filesystem::path const & p)
 	size_t size = 0;
 	while (true)
 	{
-		ssize_t res = read(fd, buf, buf_size);
+		ssize_t res = read(fd, buf.get(), buf_size);
 		if (res < 0)
 			throw fs_exception(errno, "read '" + native + "'");
 		if (res == 0)
 			break;
 		size += res;
-		SHA_Update(&sha, (u_char *)buf, res);
+		SHA_Update(&sha, (u_char *)buf.get(), res);
 	}
 	SHA_Final(sha_res.complete, &sha);
 
