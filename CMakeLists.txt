@@ -1,4 +1,5 @@
 cmake_minimum_required (VERSION 3.1)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 project (dup_ident C CXX)
 
 set (CMAKE_CXX_STANDARD 11)
@@ -41,6 +42,8 @@ find_package(Threads REQUIRED)
 find_package(Boost COMPONENTS program_options filesystem system thread REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(Sqlite3 REQUIRED)
+
 
 include_directories(third_party/gtest/include)
 include_directories(${Boost_INCLUDE_DIRS})
@@ -48,6 +51,7 @@ include_directories(${OpenSSL_INCLUDE_DIRS})
 include_directories(${PROTOBUF_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${GTEST_INCLUDE_DIRS})
+include_directories(${Sqlite3_INCLUDE_DIRS})
 
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS protos/dup_ident.proto)
 
