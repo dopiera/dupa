@@ -2,13 +2,15 @@
 
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <stack>
+#include <thread>
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/convenience.hpp>
 
 #include "hash_cache.h"
-
+#include "synch_thread_pool.h"
 
 FuzzyDedupRes fuzzy_dedup(boost::filesystem::path const & dir)
 {
@@ -55,6 +57,9 @@ std::pair<Node*, Sum2Node> ScanDirectory(boost::filesystem::path const & dir) {
 	std::unique_ptr<Node> res_first_auto_deleter(res.first); // exception safety;
 	dirs_to_process.push(res.first);
 
+	SyncThreadPool pool(4);  // FIXME: make configurable
+	std::mutex mutex;
+
 	while (!dirs_to_process.empty()) {
 		Node * const this_dir = dirs_to_process.top();
 		dirs_to_process.pop();
@@ -71,22 +76,27 @@ std::pair<Node*, Sum2Node> ScanDirectory(boost::filesystem::path const & dir) {
 			{
 				Node * const new_dir = new Node(Node::DIR,
 						it->path().filename().native());
-				this_dir->AddChild(new_dir);
 				dirs_to_process.push(new_dir);
+				std::lock_guard<std::mutex> lock(mutex);
+				this_dir->AddChild(new_dir);
 			}
 			if (is_regular(it->path()))
 			{
-				cksum const sum = hash_cache::get()(it->path());
-				if (sum) {
-					Node * const file = new Node(
-							Node::FILE,
-							it->path().filename().native());
-					this_dir->AddChild(file);
-					res.second.insert(std::make_pair(sum, file));
-				}
+				boost::filesystem::path path = it->path();
+				pool.Submit([path, this_dir, &mutex, &res] () mutable {
+					cksum const sum = hash_cache::get()(path);
+					if (sum) {
+						Node * const file = new Node(
+								Node::FILE,
+								path.filename().native());
+						std::lock_guard<std::mutex> lock(mutex);
+						this_dir->AddChild(file);
+						res.second.insert(std::make_pair(sum, file));
+					}});
 			}
 		}
 	}
+	pool.Stop();
 	res_first_auto_deleter.release();
 	return res;
 }

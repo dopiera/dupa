@@ -13,6 +13,7 @@
 #include "file_tree.h"
 #include "fuzzy_dedup.h"
 #include "hash_cache.h"
+#include "synch_thread_pool.h"
 
 using namespace std;
 using namespace boost;
@@ -82,25 +83,56 @@ void print_fuzzy_dups(FuzzyDedupRes const &res) {
 	}
 }
 
-void fill_path_hashes(path const & dir, path_hashes & hashes, string const & dir_string)
-{
-	for (directory_iterator it(dir); it != directory_iterator(); ++it)
-	{
-		if (is_symlink(it->path()))
+void fill_path_hashes(path const & start_dir, path_hashes & hashes) {
+	using boost::filesystem::path;
+	// first path allows to open the file, second is relative to start_dir
+	std::stack<std::pair<path, path> > dirs_to_process;
+	dirs_to_process.push(std::make_pair(start_dir, path()));
+
+	SyncThreadPool pool(4);  // FIXME: make configurable
+	std::mutex mutex;
+
+	bool first = true;
+
+	while (!dirs_to_process.empty()) {
+		path const dir = dirs_to_process.top().first;
+		path const relative_dir = first
+			? path()
+			: dirs_to_process.top().second;
+		dirs_to_process.pop();
+
+		first = false;
+
+		using boost::filesystem::directory_iterator;
+		for (directory_iterator it(dir); it != directory_iterator(); ++it)
 		{
-			continue;
-		}
-		if (is_directory(it->status()))
-		{
-			fill_path_hashes(it->path(), hashes, dir_string + it->path().filename().native() + "/");
-		}
-		if (is_regular(it->path()))
-		{
-			cksum const sum = hash_cache::get()(it->path());
-			if (sum)
-				hashes.insert(path_hash(dir_string + it->path().filename().native(), sum));
+			if (is_symlink(it->path()))
+			{
+				continue;
+			}
+			path const relative = relative_dir / it->path().filename();
+			path const abs = it->path();
+			if (is_directory(it->status()))
+			{
+				dirs_to_process.push(std::make_pair(abs, relative));
+			}
+			if (is_regular(abs))
+			{
+
+				pool.Submit([abs, relative, &mutex, &hashes] () mutable {
+					cksum const sum = hash_cache::get()(abs);
+					//DLOG("ALL " << relative << " " << sum);
+					if (abs.filename().native() == "empty") {
+						DLOG("empty" << sum);
+					}
+					if (sum) {
+						std::lock_guard<std::mutex> lock(mutex);
+						hashes.insert(path_hash(relative.native(), sum));
+					}});
+			}
 		}
 	}
+	pool.Stop();
 }
 
 typedef vector<string> paths;
@@ -133,9 +165,9 @@ void dir_compare(path const & dir1, path const & dir2)
 	path_hashes hashes1, hashes2;
 
 	std::thread h1filler(std::bind(
-				fill_path_hashes, std::ref(dir1), std::ref(hashes1), ""));
+				fill_path_hashes, std::ref(dir1), std::ref(hashes1)));
 	std::thread h2filler(
-			std::bind(fill_path_hashes, std::ref(dir2), std::ref(hashes2), ""));
+			std::bind(fill_path_hashes, std::ref(dir2), std::ref(hashes2)));
 	h1filler.join();
 	h2filler.join();
 
@@ -280,7 +312,7 @@ int main(int argc, char **argv)
 		if (vm.count("cache_only")) {
 			for (auto const &dir : dirs) {
 				path_hashes hashes;
-				fill_path_hashes(dir, hashes, "");
+				fill_path_hashes(dir, hashes);
 			}
 			return 0;
 		}
