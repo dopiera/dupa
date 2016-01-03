@@ -2,7 +2,9 @@
 
 #include <stdint.h>
 
+#include <algorithm>
 #include <cassert>
+#include <iostream>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -154,4 +156,27 @@ void EqClass::AddNode(Node &node) {
 	nodes.push_back(&node);
 	weight = (weight * (nodes.size() - 1) + node.GetWeight()) / nodes.size();
 	node.SetEqClass(this);
+}
+
+struct NodePathOrder : public std::binary_function<Node*, Node*, bool> {
+	bool operator()(Node* n1, Node* n2) const {
+		return n1->BuildPath().native() < n2->BuildPath().native();
+	}
+};
+
+void PrintEqClassses(std::vector<EqClass*> const &eq_classes) {
+	for (EqClass const *eq_class : eq_classes) {
+		Nodes to_print(eq_class->nodes);
+		std::sort(to_print.begin(), to_print.end(), NodePathOrder());
+		for (
+				Nodes::const_iterator node_it = to_print.begin();
+				node_it != to_print.end();
+				++node_it) {
+			std::cout << (*node_it)->BuildPath().native();
+			if (--to_print.end() != node_it) {
+				std::cout << " ";
+			}
+		}
+		std::cout << std::endl;
+	}
 }

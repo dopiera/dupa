@@ -92,6 +92,11 @@ target_link_libraries(fuzzy_dedup_test fuzzy_dedup_lib)
 target_link_libraries(fuzzy_dedup_test gtest_main)
 add_test(fuzzy_dedup_test fuzzy_dedup_test)
 
+add_library(db_output_lib db_output.cpp)
+target_link_libraries(db_output_lib  ${Boost_LIBRARIES})
+target_link_libraries(db_output_lib ${Sqlite3_LIBRARIES})
+target_link_libraries(db_output_lib fuzzy_dedup_lib)
+
 add_executable(dup_ident dup_ident.cpp)
 target_link_libraries(dup_ident ${Boost_LIBRARIES})
 target_link_libraries(dup_ident file_tree_lib)
@@ -100,4 +105,5 @@ target_link_libraries(dup_ident exceptions_lib)
 target_link_libraries(dup_ident fuzzy_dedup_lib)
 target_link_libraries(dup_ident synch_thread_pool_lib)
 target_link_libraries(dup_ident log_lib)
+target_link_libraries(dup_ident db_output_lib)
 

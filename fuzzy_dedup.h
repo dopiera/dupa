@@ -17,6 +17,7 @@ typedef std::shared_ptr<EqClasses> EqClassesPtr;
 typedef std::pair<std::shared_ptr<Node>, EqClassesPtr> FuzzyDedupRes;
 
 FuzzyDedupRes fuzzy_dedup(boost::filesystem::path const & start_dir);
+std::vector<EqClass*> GetInteresingEqClasses(FuzzyDedupRes &all);
 
 // This shouldn't be public but is for testing.
 namespace detail {

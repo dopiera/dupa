@@ -14,6 +14,7 @@
 #include "fuzzy_dedup.h"
 #include "hash_cache.h"
 #include "synch_thread_pool.h"
+#include "db_output.h"
 
 using namespace std;
 using namespace boost;
@@ -46,42 +47,6 @@ typedef multi_index_container<
 > path_hashes;
 typedef path_hashes::index<by_path>::type path_hashes_by_path;
 typedef path_hashes::index<by_hash>::type path_hashes_by_hash;
-
-struct NodePathOrder : public std::binary_function<Node*, Node*, bool> {
-	bool operator()(Node* n1, Node* n2) const {
-		return n1->BuildPath().native() < n2->BuildPath().native();
-	}
-};
-
-void print_fuzzy_dups(FuzzyDedupRes const &res) {
-	for (EqClass const &eq_class : *res.second) {
-		assert(eq_class.nodes.size() > 0);
-		if (eq_class.nodes.size() == 1) {
-			continue;
-		}
-		bool all_parents_are_dups = true;
-		for (Node *node : eq_class.nodes) {
-			if (node->GetParent() == NULL ||
-					node->GetParent()->GetEqClass().IsSingle()) {
-				all_parents_are_dups = false;
-			}
-		}
-		if (all_parents_are_dups)
-			continue;
-		Nodes to_print(eq_class.nodes);
-		std::sort(to_print.begin(), to_print.end(), NodePathOrder());
-		for (
-				Nodes::const_iterator node_it = to_print.begin();
-				node_it != to_print.end();
-				++node_it) {
-			cout << (*node_it)->BuildPath().native();
-			if (--to_print.end() != node_it) {
-				cout << " ";
-			}
-		}
-		cout << endl;
-	}
-}
 
 void fill_path_hashes(path const & start_dir, path_hashes & hashes) {
 	using boost::filesystem::path;
@@ -121,7 +86,6 @@ void fill_path_hashes(path const & start_dir, path_hashes & hashes) {
 
 				pool.Submit([abs, relative, &mutex, &hashes] () mutable {
 					cksum const sum = hash_cache::get()(abs);
-					//DLOG("ALL " << relative << " " << sum);
 					if (abs.filename().native() == "empty") {
 						DLOG("empty" << sum);
 					}
@@ -319,7 +283,12 @@ int main(int argc, char **argv)
 		if (dirs.size() == 1)
 		{
 			FuzzyDedupRes res = fuzzy_dedup(dirs[0]);
-			print_fuzzy_dups(res);
+			auto eq_classes = GetInteresingEqClasses(res);
+			PrintEqClassses(eq_classes);
+			SqliteScopedOpener db("test.db");
+			CreateResultsDatabase(db.db);
+			DumpFuzzyDedupRes(db.db, res);
+			DumpInterestingEqClasses(db.db, eq_classes);
 		}
 		if (dirs.size() == 2)
 		{

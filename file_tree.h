@@ -40,6 +40,7 @@ public:
 	bool IsEmptyDir() const { return GetType() == DIR && children.empty(); }
 	boost::filesystem::path BuildPath() const;
 	double GetWeight() const;
+	std::string const &GetName() const { return this->name; }
 	Node * GetParent() { return parent; }
 	// Return all nodes which are evaluated and share a child with this one.
 	Nodes GetPossibleEquivalents() const;
@@ -71,10 +72,16 @@ struct EqClass : private boost::noncopyable {
 	EqClass(): nodes(), weight() {}
 	bool IsEmpty() const { return nodes.empty(); }
 	bool IsSingle() const { return nodes.size() == 1; }
+	double GetWeight() const { return this->weight; }
+	size_t GetNumNodes() const { return this->nodes.size(); }
 
 	void AddNode(Node &node); // does not take ownership
 	Nodes nodes;
 	double weight;
 };
+
+// Filter out only equivalence classes which have duplicates and are not already
+// described by their parents being duplicates of something else.
+void PrintEqClassses(std::vector<EqClass*> const &eq_classes);
 
 #endif /* FILE_TREE_H_4234 */

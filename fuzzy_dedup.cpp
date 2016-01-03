@@ -44,6 +44,27 @@ FuzzyDedupRes fuzzy_dedup(boost::filesystem::path const & dir)
 	return std::make_pair(root_node, eq_classes);
 }
 
+std::vector<EqClass*> GetInteresingEqClasses(FuzzyDedupRes &all) {
+	std::vector<EqClass*> res;
+	for (EqClass &eq_class : *all.second) {
+		assert(eq_class.nodes.size() > 0);
+		if (eq_class.nodes.size() == 1) {
+			continue;
+		}
+		bool all_parents_are_dups = true;
+		for (Node *node : eq_class.nodes) {
+			if (node->GetParent() == NULL ||
+					node->GetParent()->GetEqClass().IsSingle()) {
+				all_parents_are_dups = false;
+			}
+		}
+		if (all_parents_are_dups)
+			continue;
+		res.push_back(&eq_class);
+	}
+	return res;
+}
+
 namespace detail {
 
 //======== ScanDirectory =======================================================
@@ -214,7 +235,7 @@ void PropagateEquivalence(Node &root_node, EqClassesPtr eq_classes) {
 			detail::GetClosestNode(*node, possible_equivalents);
 
 		// FIXME make configurable
-		if (min_elem_and_dist.second < 0.15) {
+		if (min_elem_and_dist.second < 0.3) {
 			min_elem_and_dist.first->GetEqClass().AddNode(*node);
 		} else {
 			EqClass *eq_class = new EqClass;
