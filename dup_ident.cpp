@@ -14,6 +14,7 @@
 #include "fuzzy_dedup.h"
 #include "hash_cache.h"
 #include "log.h"
+#include "sql_lib.h"
 #include "synch_thread_pool.h"
 
 using namespace std;
