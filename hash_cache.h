@@ -3,12 +3,15 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <mutex>
 #include <string>
 
 #include <unordered_map>
 
 #include <boost/filesystem/path.hpp>
+
+#include "sql_lib.h"
 
 typedef uint64_t cksum;
 
@@ -42,8 +45,8 @@ private:
 
 	typedef std::unordered_map<std::string, cksum> cache_map;
 	cache_map cache;
+	std::unique_ptr<SqliteScopedOpener> db_holder;
 	std::mutex mutex;
-	int out_fd;
 };
 
 #endif /* HASH_CACHE_H_6332 */

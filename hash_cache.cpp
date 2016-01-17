@@ -18,6 +18,7 @@
 #include "exceptions.h"
 #include "dup_ident.pb.h"
 #include "log.h"
+#include "sql_lib.h"
 
 namespace {
 
@@ -85,26 +86,16 @@ hash_cache::initializer::~initializer()
 }
 
 hash_cache::hash_cache(
-	std::string const & read_cache_from,
-	std::string const & dump_cache_to
-	) :
-	out_fd(-1)
-{
+		std::string const & read_cache_from,
+		std::string const & dump_cache_to
+		) {
 	if (!read_cache_from.empty())
 	{
 		this->read_cksums(read_cache_from.c_str());
 	}
 	if (!dump_cache_to.empty())
 	{
-		this->out_fd = open(
-			dump_cache_to.c_str(),
-			O_WRONLY | O_EXCL | O_CREAT,
-			S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH
-			);
-		if (this->out_fd == -1)
-		{
-			throw fs_exception(errno, "open '" + dump_cache_to + "'");
-		}
+		this->db_holder.reset(new SqliteScopedOpener(dump_cache_to));
 	}
 }
 
@@ -113,31 +104,52 @@ hash_cache::~hash_cache()
 	this->store_cksums();
 }
 
+static void create_or_empty_table(sqlite3 *db) {
+	char const sql[] =
+		"DROP TABLE IF EXISTS Cache;"
+		"CREATE TABLE Cache("
+			"path           TEXT    UNIQUE NOT NULL,"
+			"cksum          INTEGER NOT NULL);";
+	char *err_msg_raw;
+	int res = sqlite3_exec(db, sql, NULL, NULL, &err_msg_raw);
+	if (res != SQLITE_OK) {
+		auto err_msg = MakeSqliteUnique(err_msg_raw);
+		throw sqlite_exception(db, std::string("Creating results tables: " ) +
+				err_msg.get());
+	}
+}
+
 void hash_cache::store_cksums()
 {
 	std::lock_guard<std::mutex> lock(this->mutex);
-	if (this->out_fd < 0)
+	if (!this->db_holder)
 	{
 		return;
 	}
-	Paths paths;
+
+	sqlite3 *db = this->db_holder->db;
+	create_or_empty_table(db);
+	char const sql[] =
+		"INSERT INTO Cache(path, cksum) VALUES(?, ?)";
+	StmtPtr stmt(PrepareStmt(db, sql));
+	StartTransaction(db);
 	for (auto const & cksum_and_path : this->cache)
 	{
-		Path &p = *paths.add_paths();
-		p.set_path(cksum_and_path.first);
-		p.set_cksum(cksum_and_path.second);
+		SqliteBind(
+				*stmt,
+				cksum_and_path.first,
+				cksum_and_path.second);
+		int res = sqlite3_step(stmt.get());
+		if (res != SQLITE_DONE)
+			throw sqlite_exception(db, "Inserting EqClass");
+		res = sqlite3_clear_bindings(stmt.get());
+		if (res != SQLITE_OK)
+		   throw sqlite_exception(db, "Clearing EqClass bindings");
+		res = sqlite3_reset(stmt.get());
+		if (res != SQLITE_OK)
+		   throw sqlite_exception(db, "Clearing EqClass bindings");
 	}
-	if (!paths.SerializeToFileDescriptor(this->out_fd))
-	{
-		throw proto_exception(
-				"Failed to serialize cache; TODO: add more logging");
-	}
-	this->out_fd = close(this->out_fd);
-	if (this->out_fd < 0)
-	{
-		throw fs_exception(errno, "close dumped cache file");
-	}
-	
+	EndTransaction(db);
 }
 
 void hash_cache::read_cksums(std::string const & path)
