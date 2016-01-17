@@ -9,12 +9,12 @@
 #include <boost/multi_index/member.hpp>
 #include <boost/program_options.hpp>
 
-#include "log.h"
+#include "db_output.h"
 #include "file_tree.h"
 #include "fuzzy_dedup.h"
 #include "hash_cache.h"
+#include "log.h"
 #include "synch_thread_pool.h"
-#include "db_output.h"
 
 using namespace std;
 using namespace boost;
