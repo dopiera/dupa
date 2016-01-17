@@ -30,7 +30,7 @@ void StartTransaction(sqlite3 *db) {
 	char *err_msg_raw;
 	int res = sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &err_msg_raw);
 	if (res != SQLITE_OK) {
-		auto err_msg = MakeSqliteUnique(err_msg_raw);
+		auto err_msg = detail::MakeSqliteUnique(err_msg_raw);
 		throw sqlite_exception(db, "Starting transaction");
 	}
 }
@@ -39,8 +39,21 @@ void EndTransaction(sqlite3 *db) {
 	char *err_msg_raw;
 	int res = sqlite3_exec(db, "End TRANSACTION", NULL, NULL, &err_msg_raw);
 	if (res != SQLITE_OK) {
-		auto err_msg = MakeSqliteUnique(err_msg_raw);
+		auto err_msg = detail::MakeSqliteUnique(err_msg_raw);
 		throw sqlite_exception(db, "Finishing transaction");
 	}
 }
 
+void SqliteExec(
+		sqlite3 *db,
+		const std::string &sql,
+		std::function<void(sqlite3_stmt &)> row_cb
+		) {
+	StmtPtr stmt(PrepareStmt(db, sql));
+	int res;
+	while ((res = sqlite3_step(stmt.get())) == SQLITE_ROW) {
+		row_cb(*stmt);
+	}
+	if (res != SQLITE_DONE)
+		throw sqlite_exception(db, "Executing " + sql);
+}

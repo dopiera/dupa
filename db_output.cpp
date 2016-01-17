@@ -27,7 +27,7 @@ void CreateResultsDatabase(sqlite3 *db) {
    char *err_msg_raw;
    int res = sqlite3_exec(db, sql, NULL, NULL, &err_msg_raw);
    if (res != SQLITE_OK) {
-	   auto err_msg = MakeSqliteUnique(err_msg_raw);
+	   auto err_msg = detail::MakeSqliteUnique(err_msg_raw);
 	   throw sqlite_exception(db, std::string("Creating results tables: " ) +
 			   err_msg.get());
    }

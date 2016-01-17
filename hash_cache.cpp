@@ -16,7 +16,6 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
 #include "exceptions.h"
-#include "dup_ident.pb.h"
 #include "log.h"
 #include "sql_lib.h"
 
@@ -113,7 +112,7 @@ static void create_or_empty_table(sqlite3 *db) {
 	char *err_msg_raw;
 	int res = sqlite3_exec(db, sql, NULL, NULL, &err_msg_raw);
 	if (res != SQLITE_OK) {
-		auto err_msg = MakeSqliteUnique(err_msg_raw);
+		auto err_msg = detail::MakeSqliteUnique(err_msg_raw);
 		throw sqlite_exception(db, std::string("Creating results tables: " ) +
 				err_msg.get());
 	}
@@ -155,31 +154,17 @@ void hash_cache::store_cksums()
 void hash_cache::read_cksums(std::string const & path)
 {
 	std::lock_guard<std::mutex> lock(this->mutex);
-	int fd;
-	fd = open(path.c_str(), O_RDONLY);
-	if (fd == -1)
-		throw fs_exception(errno, "open '" + path + "'");
-
-	Paths paths;
-	google::protobuf::io::FileInputStream file_input(fd);
-	google::protobuf::io::CodedInputStream coded_input(&file_input);
-	coded_input.SetTotalBytesLimit(512 * 1024 * 1024, 512 * 1024 * 1024);
-	if (!paths.ParseFromCodedStream(&coded_input) ||
-		file_input.GetErrno() != 0)
-	{
-		throw proto_exception("parsing failed; TODO: reasonable message here");
-	}
+	SqliteScopedOpener db(path, SQLITE_OPEN_READONLY);
+	char const sql[] = "SELECT path, cksum FROM Cache";
 	this->cache.clear();
-	for (int i = 0; i < paths.paths_size(); ++i)
-	{
-		Path const & p = paths.paths(i);
-		this->cache.insert(make_pair(p.path(), p.cksum()));
-	}
-	fd = close(fd);
-	if (fd < 0)
-	{
-		throw fs_exception(errno, "close '" + path + "'");
-	}
+	SqliteExec(db.db, sql, [&] (sqlite3_stmt &row) {
+			std::string const path(reinterpret_cast<const char*>(
+								sqlite3_column_text(&row, 0)));
+			cksum sum = sqlite3_column_int64(&row, 1);
+			DLOG("Read \"" << path << "\": " << sum);
+
+			this->cache.insert(std::make_pair(path, sum));
+			});
 }
 
 cksum hash_cache::operator()(boost::filesystem::path const & p)

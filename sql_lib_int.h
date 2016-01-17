@@ -29,6 +29,11 @@ struct SqliteDeleter : public std::unary_function<void*,void> {
 };
 
 template <class C>
+inline std::unique_ptr<C, detail::SqliteDeleter> MakeSqliteUnique(C *o) {
+	return std::unique_ptr<C, detail::SqliteDeleter>(o);
+}
+
+template <class C>
 void SqliteBind1(sqlite3_stmt &s, int idx, C const & value);
 
 template <>
