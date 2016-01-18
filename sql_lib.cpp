@@ -5,6 +5,17 @@ SqliteScopedOpener::SqliteScopedOpener(std::string const &path, int flags) {
 	if (res != SQLITE_OK) {
 		throw sqlite_exception(res, "Opening DB " + path);
 	}
+	// I don't care about consistency. This data is easilly regneratable.
+	const char sql[] = "PRAGMA page_size = 65536; "
+		"PRAGMA synchronous = 0; "
+		"PRAGMA journal_mode = OFF;";
+	char *err_msg_raw;
+	res = sqlite3_exec(db, sql, NULL, NULL, &err_msg_raw);
+	if (res != SQLITE_OK) {
+		auto err_msg = detail::MakeSqliteUnique(err_msg_raw);
+		throw sqlite_exception(db, std::string("Creating results tables: " ) +
+				err_msg.get());
+	}
 }
 
 SqliteScopedOpener::~SqliteScopedOpener() {
