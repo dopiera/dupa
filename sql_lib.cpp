@@ -8,7 +8,8 @@ SqliteScopedOpener::SqliteScopedOpener(std::string const &path, int flags) {
 	// I don't care about consistency. This data is easilly regneratable.
 	const char sql[] = "PRAGMA page_size = 65536; "
 		"PRAGMA synchronous = 0; "
-		"PRAGMA journal_mode = OFF;";
+		"PRAGMA journal_mode = OFF;"
+		"PRAGMA foreign_keys = 1;";  // one can never be too sure
 	char *err_msg_raw;
 	res = sqlite3_exec(db, sql, NULL, NULL, &err_msg_raw);
 	if (res != SQLITE_OK) {

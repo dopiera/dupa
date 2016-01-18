@@ -23,7 +23,9 @@ void CreateResultsDatabase(sqlite3 *db) {
          "path           TEXT    NOT NULL,"
          "type           CHAR(5) NOT NULL,"
          "cksum          INTEGER,"  // NULL for directories
-         "eq_class		 INT     NOT NULL);";
+         "eq_class		 INT     NOT NULL,"
+	    "FOREIGN KEY(eq_class) REFERENCES EqClass(id)"
+		"ON UPDATE RESTRICT ON DELETE RESTRICT);";
    char *err_msg_raw;
    int res = sqlite3_exec(db, sql, NULL, NULL, &err_msg_raw);
    if (res != SQLITE_OK) {
