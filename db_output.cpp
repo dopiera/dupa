@@ -8,15 +8,11 @@ void CreateResultsDatabase(sqlite3 *db) {
    char const sql[] =
 	   "DROP TABLE IF EXISTS Node;"
 	   "DROP TABLE IF EXISTS EqClass;"
-	   "DROP TABLE IF EXISTS EqClassDup;"
 	   "CREATE TABLE EqClass("
 	     "id INT PRIMARY KEY     NOT NULL,"
 		 "nodes          INT     NOT NULL,"
-		 "weight         DOUBLE);"
-	   "CREATE TABLE EqClassDup("
-	     "id INT PRIMARY KEY     NOT NULL,"
-		 "nodes          INT     NOT NULL,"
-		 "weight         DOUBLE);"
+		 "weight         DOUBLE  NOT NULL,"
+	     "interesting    BOOL    NOT NULL);"
 	   "CREATE TABLE Node("
          "id INT PRIMARY KEY     NOT NULL,"
          "name           TEXT    NOT NULL,"
@@ -38,15 +34,13 @@ void CreateResultsDatabase(sqlite3 *db) {
 void DumpInterestingEqClasses(sqlite3 *db,
 		std::vector<EqClass*> const &eq_classes) {
 	char const eq_class_sql[] =
-		"INSERT INTO EqClassDup(id, nodes, weight) VALUES(?, ?, ?)";
+		"UPDATE EqClass SET interesting = 1 WHERE id == ?";
 	StmtPtr eq_class_stmt(PrepareStmt(db, eq_class_sql));
 	StartTransaction(db);
 	for (EqClass const *eq_class: eq_classes) {
 		SqliteBind(
 				*eq_class_stmt,
-				reinterpret_cast<uintptr_t>(eq_class),
-				eq_class->GetNumNodes(),
-				eq_class->GetWeight()
+				reinterpret_cast<uintptr_t>(eq_class)
 				);
 		int res = sqlite3_step(eq_class_stmt.get());
 		if (res != SQLITE_DONE)
@@ -63,7 +57,8 @@ void DumpInterestingEqClasses(sqlite3 *db,
 
 void DumpFuzzyDedupRes(sqlite3 *db, FuzzyDedupRes const &res) {
 	char const eq_class_sql[] =
-		"INSERT INTO EqClass(id, nodes, weight) VALUES(?, ?, ?)";
+		"INSERT INTO EqClass(id, nodes, weight, interesting) "
+		"VALUES(?, ?, ?, 0)";
 	char const node_sql[] =
 		"INSERT INTO Node(id, name, path, type, eq_class) "
 			"VALUES(?, ?, ?, ?, ?)";
