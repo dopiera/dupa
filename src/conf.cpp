@@ -28,6 +28,8 @@ void ParseArgv(int argc, char **argv) {
 		 "path to the file from which to read checksum cache")
 		("dump_cache_to,C", value<std::string>(&conf->dump_cache_to),
 		 "path to which to dump the checksum cache")
+		("sql_out,o", value<std::string>(&conf->sql_out),
+		 "if set, path to where SQLite3 results will be dumped")
 		("cache_only,1", "only generate checksums cache")
 		("verbose,v", "be verbose");
 

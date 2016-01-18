@@ -7,6 +7,7 @@
 struct GlobalConfig {
 	std::string read_cache_from;
 	std::string dump_cache_to;
+	std::string sql_out;
 	std::vector<std::string> dirs;
 	bool verbose;
 	bool cache_only;
