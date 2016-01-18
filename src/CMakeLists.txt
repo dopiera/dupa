@@ -1,3 +1,5 @@
+add_library(conf_lib conf.cpp)
+
 add_library(log_lib log.cpp)
 
 add_library(exceptions_lib exceptions.cpp)
@@ -51,4 +53,5 @@ target_link_libraries(dup_ident fuzzy_dedup_lib)
 target_link_libraries(dup_ident synch_thread_pool_lib)
 target_link_libraries(dup_ident log_lib)
 target_link_libraries(dup_ident db_output_lib)
+target_link_libraries(dup_ident conf_lib)
 

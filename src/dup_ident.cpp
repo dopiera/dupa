@@ -7,8 +7,8 @@
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/member.hpp>
-#include <boost/program_options.hpp>
 
+#include "conf.h"
 #include "db_output.h"
 #include "file_tree.h"
 #include "fuzzy_dedup.h"
@@ -21,7 +21,6 @@ using namespace std;
 using namespace boost;
 using namespace boost::filesystem;
 using namespace boost::multi_index;
-using namespace boost::program_options;
 
 BOOST_STATIC_ASSERT(sizeof(off_t) == 8);
 
@@ -229,80 +228,34 @@ static void print_compilation_profile_warning() {
 int main(int argc, char **argv)
 {
 	print_compilation_profile_warning();
-	string read_cache_from, dump_cache_to;
-	vector<string> dirs;
-
-	variables_map vm;
-	options_description hidden_desc("Hidden options");
-	hidden_desc.add_options()
-		("directory,d", value<vector<string> >(&dirs)->composing(),
-		 "directory to analyze");
-	options_description desc("usage: dup_ident dir1 [dir2]");
-	desc.add_options()
-		("help,h", "produce help message")
-		("read_cache_from,c", value<string>(&read_cache_from),
-		 "path to the file from which to read checksum cache")
-		("dump_cache_to,C", value<string>(&dump_cache_to),
-		 "path to which to dump the checksum cache")
-		("cache_only,1", "only generate checksums cache")
-		("verbose,v", "be verbose");
+	ParseArgv(argc, argv);
 
 	try {
-		options_description effective_desc;
-		effective_desc.add(hidden_desc).add(desc);
-		positional_options_description p;
-		p.add("directory", 2);
-		store(command_line_parser(argc, argv).options(effective_desc)
-				.positional(p).run(), vm);
-		notify(vm);    
-	} catch (program_options::error const &e) {
-		cout << e.what() << endl;
-		cout << desc << endl;
-		return 1;
-	}
+		hash_cache::initializer hash_cache_init(
+				Conf().read_cache_from,
+				Conf().dump_cache_to);
 
-	if (vm.count("verbose")) {
-		stderr_loglevel = DEBUG;
-	}
-
-	if (vm.count("help"))
-	{
-		cout << desc << endl;
-		return 0;
-	}
-
-	try {
-		hash_cache::initializer hash_cache_init(read_cache_from, dump_cache_to);
-
-		if (vm.count("cache_only")) {
-			for (auto const &dir : dirs) {
+		if (Conf().cache_only) {
+			for (auto const &dir : Conf().dirs) {
 				path_hashes hashes;
 				fill_path_hashes(dir, hashes);
 			}
 			return 0;
 		}
-		if (dirs.size() == 1)
-		{
-			FuzzyDedupRes res = fuzzy_dedup(dirs[0]);
+		if (Conf().dirs.size() == 1) {
+			FuzzyDedupRes res = fuzzy_dedup(Conf().dirs[0]);
 			auto eq_classes = GetInteresingEqClasses(res);
 			PrintEqClassses(eq_classes);
 			SqliteScopedOpener db("test.db");
 			CreateResultsDatabase(db.db);
 			DumpFuzzyDedupRes(db.db, res);
 			DumpInterestingEqClasses(db.db, eq_classes);
-		}
-		if (dirs.size() == 2)
-		{
-			dir_compare(dirs[0], dirs[1]);
+		} else if (Conf().dirs.size() == 2) {
+			dir_compare(Conf().dirs[0], Conf().dirs[1]);
 			return 0;
-		}
-		else
-		{
-			if (dirs.empty())
-			{
-				cout << desc << endl;
-				return 1;
-			}
+		} else {
+			// Should have been checked already.
+			assert(false);
 		}
 	}
 	catch (ios_base::failure const & ex)
