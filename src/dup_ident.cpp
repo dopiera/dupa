@@ -14,6 +14,7 @@
 #include "fuzzy_dedup.h"
 #include "hash_cache.h"
 #include "log.h"
+#include "scanner_int.h"
 #include "sql_lib.h"
 #include "synch_thread_pool.h"
 
@@ -48,55 +49,34 @@ typedef multi_index_container<
 typedef path_hashes::index<by_path>::type path_hashes_by_path;
 typedef path_hashes::index<by_hash>::type path_hashes_by_hash;
 
-void fill_path_hashes(path const & start_dir, path_hashes & hashes) {
-	using boost::filesystem::path;
-	// first path allows to open the file, second is relative to start_dir
-	std::stack<std::pair<path, path> > dirs_to_process;
-	dirs_to_process.push(std::make_pair(start_dir, path()));
+struct PathHashesFiller : ScanProcessor<boost::filesystem::path> {
+	typedef boost::filesystem::path Path;
 
-	SyncThreadPool pool(4);  // FIXME: make configurable
-	std::mutex mutex;
+	PathHashesFiller(path_hashes & hashes) : hashes_(hashes) {}
 
-	bool first = true;
-
-	while (!dirs_to_process.empty()) {
-		path const dir = dirs_to_process.top().first;
-		path const relative_dir = first
-			? path()
-			: dirs_to_process.top().second;
-		dirs_to_process.pop();
-
-		first = false;
-
-		using boost::filesystem::directory_iterator;
-		for (directory_iterator it(dir); it != directory_iterator(); ++it)
-		{
-			if (is_symlink(it->path()))
-			{
-				continue;
-			}
-			path const relative = relative_dir / it->path().filename();
-			path const abs = it->path();
-			if (is_directory(it->status()))
-			{
-				dirs_to_process.push(std::make_pair(abs, relative));
-			}
-			if (is_regular(abs))
-			{
-
-				pool.Submit([abs, relative, &mutex, &hashes] () mutable {
-					cksum const sum = hash_cache::get()(abs);
-					if (abs.filename().native() == "empty") {
-						DLOG("empty" << sum);
-					}
-					if (sum) {
-						std::lock_guard<std::mutex> lock(mutex);
-						hashes.insert(path_hash(relative.native(), sum));
-					}});
-			}
-		}
+	virtual void File(
+			boost::filesystem::path const &path,
+			Path const &parent,
+			cksum cksum) {
+		Path const relative = parent / path.filename();
+		hashes_.insert(path_hash(relative.native(), cksum));
 	}
-	pool.Stop();
+	virtual Path RootDir(boost::filesystem::path const &path) {
+		return Path();
+	}
+	virtual Path Dir(
+			boost::filesystem::path const &path,
+			Path const &parent
+			) {
+		return parent / path.filename();
+	}
+
+	path_hashes &hashes_;
+};
+
+void fill_path_hashes(path const & start_dir, path_hashes & hashes) {
+	PathHashesFiller processor(hashes);
+	ScanDirectory(start_dir, processor);
 }
 
 typedef vector<string> paths;

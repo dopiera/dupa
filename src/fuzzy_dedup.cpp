@@ -10,6 +10,8 @@
 #include <boost/filesystem/convenience.hpp>
 
 #include "hash_cache.h"
+#include "log.h"
+#include "scanner_int.h"
 #include "synch_thread_pool.h"
 
 FuzzyDedupRes fuzzy_dedup(boost::filesystem::path const & dir)
@@ -69,56 +71,43 @@ namespace detail {
 
 //======== ScanDirectory =======================================================
 
+struct TreeCtorProcessor : public ScanProcessor<Node*> {
+	virtual void File(
+			boost::filesystem::path const &path,
+			Node* const &parent,
+			cksum cksum) {
+		Node *node = new Node(Node::FILE, path.filename().native());
+		parent->AddChild(node);
+		sum2node_.insert(std::make_pair(cksum, node));
+	}
+
+	virtual Node* RootDir(boost::filesystem::path const &path) {
+		root_.reset(new Node(Node::DIR, path.native()));
+		return root_.get();
+	}
+
+	virtual Node* Dir(
+			boost::filesystem::path const &path,
+			Node* const &parent
+			) {
+		Node *node = new Node(Node::DIR, path.filename().native());
+		parent->AddChild(node);
+		return node;
+	}
+
+	Sum2Node sum2node_;
+	std::unique_ptr<Node> root_;
+};
+
 std::pair<Node*, Sum2Node> ScanDirectory(boost::filesystem::path const & dir) {
 	std::pair<Node*, Sum2Node> res;
 
-	std::stack<Node*> dirs_to_process;
+	TreeCtorProcessor processor;
 
-	res.first = new Node(Node::DIR, dir.native());
-	std::unique_ptr<Node> res_first_auto_deleter(res.first); // exception safety;
-	dirs_to_process.push(res.first);
+	ScanDirectory(dir, processor);
 
-	SyncThreadPool pool(4);  // FIXME: make configurable
-	std::mutex mutex;
-
-	while (!dirs_to_process.empty()) {
-		Node * const this_dir = dirs_to_process.top();
-		dirs_to_process.pop();
-		boost::filesystem::path const this_path = this_dir->BuildPath();
-
-		using boost::filesystem::directory_iterator;
-		for (directory_iterator it(this_path); it != directory_iterator(); ++it)
-		{
-			if (is_symlink(it->path()))
-			{
-				continue;
-			}
-			if (is_directory(it->status()))
-			{
-				Node * const new_dir = new Node(Node::DIR,
-						it->path().filename().native());
-				dirs_to_process.push(new_dir);
-				std::lock_guard<std::mutex> lock(mutex);
-				this_dir->AddChild(new_dir);
-			}
-			if (is_regular(it->path()))
-			{
-				boost::filesystem::path path = it->path();
-				pool.Submit([path, this_dir, &mutex, &res] () mutable {
-					cksum const sum = hash_cache::get()(path);
-					if (sum) {
-						Node * const file = new Node(
-								Node::FILE,
-								path.filename().native());
-						std::lock_guard<std::mutex> lock(mutex);
-						this_dir->AddChild(file);
-						res.second.insert(std::make_pair(sum, file));
-					}});
-			}
-		}
-	}
-	pool.Stop();
-	res_first_auto_deleter.release();
+	res.second.swap(processor.sum2node_);
+	res.first = processor.root_.release();
 	return res;
 }
 
