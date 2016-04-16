@@ -13,6 +13,7 @@ struct GlobalConfig {
 	int tolerable_diff_pct;
 	bool verbose;
 	bool cache_only;
+	bool use_size;
 };
 
 void ParseArgv(int argc, const char* const argv[]);

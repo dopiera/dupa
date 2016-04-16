@@ -31,6 +31,9 @@ void ParseArgv(int argc, const char* const argv[]) {
 		("sql_out,o", value<std::string>(&conf->sql_out),
 		 "if set, path to where SQLite3 results will be dumped")
 		("cache_only,1", "only generate checksums cache")
+		("use_size,s", bool_switch(&conf->use_size)->default_value(false),
+		 "use file size rather than number of files as a measure of directory "
+		 "sizes")
 		("verbose,v", "be verbose")
 		("concurrency,j", value<int>(&conf->concurrency)->default_value(4),
 		 "number of concurrently computed checksums")

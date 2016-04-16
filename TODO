@@ -1,4 +1,3 @@
-- use size for weight
 - test for fuzzy_dedup
 - unify style
 - detect scatterred directories

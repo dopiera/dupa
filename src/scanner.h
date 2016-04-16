@@ -13,7 +13,7 @@ struct ScanProcessor {
 	virtual void File(
 			boost::filesystem::path const &path,
 			DirHandle const &parent,
-			cksum cksum) = 0;
+			file_info const &f_info) = 0;
 	virtual DirHandle RootDir(boost::filesystem::path const &path) = 0;
 	virtual DirHandle Dir(
 			boost::filesystem::path const &path,

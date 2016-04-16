@@ -57,9 +57,9 @@ struct PathHashesFiller : ScanProcessor<boost::filesystem::path> {
 	virtual void File(
 			boost::filesystem::path const &path,
 			Path const &parent,
-			cksum cksum) {
+			file_info const &f_info) {
 		Path const relative = parent / path.filename();
-		hashes_.insert(path_hash(relative.native(), cksum));
+		hashes_.insert(path_hash(relative.native(), f_info.sum));
 	}
 	virtual Path RootDir(boost::filesystem::path const &path) {
 		return Path();

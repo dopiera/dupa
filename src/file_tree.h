@@ -9,6 +9,8 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/noncopyable.hpp>
 
+#include "log.h"
+
 class Node;
 class EqClass;
 
@@ -22,14 +24,18 @@ public:
 		OTHER
 	};
 
-	Node(Type type, std::string const & name) :
+	// Size is only meaningful for regular files.
+	Node(Type type, std::string const & name, off_t size = 0) :
 		name(name),
 		type(type),
+		size(size),
 		parent(NULL),
 		eq_class(NULL),
 		not_evaluated_children()
 	{
 		assert(name != "");
+		DLOG("Created file: '" << this->BuildPath().native() << "' with size "
+				<< this->size << " and type " << this->type);
 	}
 
 	void AddChild(Node *child); // takes ownership
@@ -56,6 +62,7 @@ private:
 
 	std::string name;
 	Type type;
+	off_t size;
 	Node *parent;
 	Nodes children;
 	EqClass *eq_class;

@@ -9,6 +9,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "conf.h"
+
 void Node::AddChild(Node *child) {
 	assert(!IsEvaluated());
 	assert(child->parent == NULL);
@@ -42,7 +44,10 @@ double Node::GetWeight() const {
 
 	switch (type) {
 		case FILE:
-			return 1;
+			if (Conf().use_size)
+				return this->size;
+			else
+				return 1;
 		case DIR:
 			{
 				std::unordered_set<EqClass*> eq_classes;

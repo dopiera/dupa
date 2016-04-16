@@ -75,10 +75,11 @@ struct TreeCtorProcessor : public ScanProcessor<Node*> {
 	virtual void File(
 			boost::filesystem::path const &path,
 			Node* const &parent,
-			cksum cksum) {
-		Node *node = new Node(Node::FILE, path.filename().native());
+			file_info const &f_info) {
+		Node *node =
+			new Node(Node::FILE, path.filename().native(), f_info.size);
 		parent->AddChild(node);
-		sum2node_.insert(std::make_pair(cksum, node));
+		sum2node_.insert(std::make_pair(f_info.sum, node));
 	}
 
 	virtual Node* RootDir(boost::filesystem::path const &path) {
