@@ -15,6 +15,17 @@
 
 typedef uint64_t cksum;
 
+struct file_info
+{
+	file_info() {}
+	file_info(off_t size, time_t mtime, cksum sum) :
+		size(size), mtime(mtime), sum(sum) {}
+
+	off_t size;
+	time_t mtime;
+	cksum sum;
+};
+
 class hash_cache
 {
 public:
@@ -26,14 +37,13 @@ public:
 		~initializer();
 	};
 	static hash_cache & get();
-	cksum operator()(boost::filesystem::path const & p);
+	file_info operator()(boost::filesystem::path const & p);
 private:
 	hash_cache(
 		std::string const & read_cache_from,
 		std::string const & dump_cache_to
 		);
 	~hash_cache();
-	static cksum compute_cksum(boost::filesystem::path const & p);
 	void store_cksums();
 	void read_cksums(std::string const & path);
 	static void initialize(
@@ -43,7 +53,7 @@ private:
 
 	static hash_cache * instance;
 
-	typedef std::unordered_map<std::string, cksum> cache_map;
+	typedef std::unordered_map<std::string, file_info> cache_map;
 	cache_map cache;
 	std::unique_ptr<SqliteScopedOpener> db_holder;
 	std::mutex mutex;

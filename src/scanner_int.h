@@ -44,7 +44,7 @@ void ScanDirectory(
 			if (boost::filesystem::is_regular(new_path))
 			{
 				pool.Submit([new_path, handle, &mutex, &processor] () mutable {
-					cksum const sum = hash_cache::get()(new_path);
+					cksum const sum = hash_cache::get()(new_path).sum;
 					if (sum) {
 						std::lock_guard<std::mutex> lock(mutex);
 						processor.File(new_path, handle, sum);

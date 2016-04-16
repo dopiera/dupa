@@ -28,6 +28,15 @@ namespace {
 class inode_cache {
 public:
 	typedef std::pair<dev_t, ino_t> uuid;
+	struct stat_result {
+		stat_result(uuid id, off_t size, time_t mtime):
+			id(id), size(size), mtime(mtime)
+		{}
+
+		uuid id;
+		off_t size;
+		time_t mtime;
+	};
 
 	std::pair<bool, cksum> get(uuid ino) {
 		std::lock_guard<std::mutex> lock(this->mutex);
@@ -45,7 +54,8 @@ public:
 		this->cache_map.insert(std::make_pair(ino, sum));
 	}
 
-	static uuid get_inode(int fd, std::string const &path_for_errors) {
+	static stat_result get_inode_info(
+			int fd, std::string const &path_for_errors) {
 		struct stat st;
 		int res = fstat(fd, &st);
 		if (res != 0) {
@@ -55,7 +65,10 @@ public:
 			throw fs_exception(errno, "'" + path_for_errors +
 					"' is not a regular file");
 		}
-		return std::make_pair(st.st_dev, st.st_ino);
+		return stat_result(
+				std::make_pair(st.st_dev, st.st_ino),
+				st.st_size,
+				st.st_mtime);
 	}
 
 private:
@@ -66,6 +79,50 @@ private:
 
 // I'm asking for trouble, but I'm lazy.
 static inode_cache ino_cache;
+
+cksum compute_cksum(
+		int fd, inode_cache::uuid uuid, std::string const & path_for_errors)
+{
+	{
+		std::pair<bool, cksum> sum = ino_cache.get(uuid);
+		if (sum.first) {
+			DLOG(path_for_errors << " shares an inode with something already "
+					"computed!");
+			return sum.second;
+		}
+	}
+
+	size_t const buf_size = 1024 * 1024;
+	std::unique_ptr<char[]> buf(new char[buf_size]);
+
+	union {
+		u_char complete[20];
+		cksum prefix;
+	} sha_res;
+
+	SHA_CTX sha;
+	SHA_Init(&sha);
+	size_t size = 0;
+	while (true)
+	{
+		ssize_t res = read(fd, buf.get(), buf_size);
+		if (res < 0)
+			throw fs_exception(errno, "read '" + path_for_errors + "'");
+		if (res == 0)
+			break;
+		size += res;
+		SHA_Update(&sha, (u_char *)buf.get(), res);
+	}
+	SHA_Final(sha_res.complete, &sha);
+
+	if (size) {
+		ino_cache.update(uuid, sha_res.prefix);
+		return sha_res.prefix;
+	} else {
+		ino_cache.update(uuid, 0);
+		return 0;
+	}
+}
 
 } /* anonymous namespace */
 
@@ -108,7 +165,9 @@ static void create_or_empty_table(sqlite3 *db) {
 		"DROP TABLE IF EXISTS Cache;"
 		"CREATE TABLE Cache("
 			"path           TEXT    UNIQUE NOT NULL,"
-			"cksum          INTEGER NOT NULL);";
+			"cksum          INTEGER NOT NULL,"
+			"size           INTEGER NOT NULL,"
+			"mtime          INTEGER NOT NULL);";
 	char *err_msg_raw;
 	int res = sqlite3_exec(db, sql, NULL, NULL, &err_msg_raw);
 	if (res != SQLITE_OK) {
@@ -129,15 +188,17 @@ void hash_cache::store_cksums()
 	sqlite3 *db = this->db_holder->db;
 	create_or_empty_table(db);
 	char const sql[] =
-		"INSERT INTO Cache(path, cksum) VALUES(?, ?)";
+		"INSERT INTO Cache(path, cksum, size, mtime) VALUES(?, ?, ?, ?)";
 	StmtPtr stmt(PrepareStmt(db, sql));
 	StartTransaction(db);
-	for (auto const & cksum_and_path : this->cache)
+	for (auto const & cksum_and_info : this->cache)
 	{
 		SqliteBind(
 				*stmt,
-				cksum_and_path.first,
-				cksum_and_path.second);
+				cksum_and_info.first,
+				cksum_and_info.second.sum,
+				cksum_and_info.second.size,
+				cksum_and_info.second.mtime);
 		int res = sqlite3_step(stmt.get());
 		if (res != SQLITE_DONE)
 			throw sqlite_exception(db, "Inserting EqClass");
@@ -155,39 +216,21 @@ void hash_cache::read_cksums(std::string const & path)
 {
 	std::lock_guard<std::mutex> lock(this->mutex);
 	SqliteScopedOpener db(path, SQLITE_OPEN_READONLY);
-	char const sql[] = "SELECT path, cksum FROM Cache";
+	char const sql[] = "SELECT path, cksum, size, mtime FROM Cache";
 	this->cache.clear();
 	SqliteExec(db.db, sql, [&] (sqlite3_stmt &row) {
 			std::string const path(reinterpret_cast<const char*>(
 								sqlite3_column_text(&row, 0)));
-			cksum sum = sqlite3_column_int64(&row, 1);
-			DLOG("Read \"" << path << "\": " << sum);
+			cksum const sum = sqlite3_column_int64(&row, 1);
+			off_t const size = sqlite3_column_int64(&row, 2);
+			time_t const mtime = sqlite3_column_int64(&row, 3);
+			DLOG("Read \"" << path << "\": " << sum << " " << size << " " <<
+					mtime);
 
-			this->cache.insert(std::make_pair(path, sum));
+			file_info f_info(size, mtime, sum);
+
+			this->cache.insert(std::make_pair(path, f_info));
 			});
-}
-
-cksum hash_cache::operator()(boost::filesystem::path const & p)
-{
-	{
-		std::lock_guard<std::mutex> lock(this->mutex);
-		cache_map::const_iterator it = this->cache.find(p.native());
-		if (it != this->cache.end())
-		{
-			return it->second;
-		}
-	}
-	cksum res = this->compute_cksum(p);
-
-	std::lock_guard<std::mutex> lock(this->mutex);
-	// If some other thread inserted a checksum for the same file in the
-	// meantime, it's not a big deal.
-	this->cache.insert(make_pair(p.native(), res));
-	if (this->cache.size() % 1000 == 0)
-	{
-		LOG(INFO, this->cache.size());
-	}
-	return res;
 }
 
 namespace {
@@ -209,7 +252,7 @@ private:
 
 } /* anonymous namespace */
 
-cksum hash_cache::compute_cksum(boost::filesystem::path const & p)
+file_info hash_cache::operator()(boost::filesystem::path const & p)
 {
 	std::string const native = p.native();
 	int fd = open(native.c_str(), O_RDONLY);
@@ -217,45 +260,28 @@ cksum hash_cache::compute_cksum(boost::filesystem::path const & p)
 		throw fs_exception(errno, "open '" + native + "'");
 	auto_fd_closer closer(fd);
 
-	inode_cache::uuid uuid = ino_cache.get_inode(fd, native);
+	inode_cache::stat_result stat_res =
+		ino_cache.get_inode_info(fd, native);
 	{
-		std::pair<bool, cksum> sum = ino_cache.get(uuid);
-		if (sum.first) {
-			DLOG(native << " shares an inode with something already computed!");
-			return sum.second;
+		std::lock_guard<std::mutex> lock(this->mutex);
+		cache_map::const_iterator it = this->cache.find(p.native());
+		if (it != this->cache.end())
+		{
+			file_info const & cached = it->second;
+			if (cached.size == stat_res.size && cached.mtime == stat_res.mtime)
+				return it->second;
 		}
 	}
+	cksum cksum = compute_cksum(fd, stat_res.id, native);
+	file_info res(stat_res.size, stat_res.mtime, cksum);
 
-	size_t const buf_size = 1024 * 1024;
-	std::unique_ptr<char[]> buf(new char[buf_size]);
-
-	union {
-		u_char complete[20];
-		cksum prefix;
-	} sha_res;
-
-	SHA_CTX sha;
-	SHA_Init(&sha);
-	size_t size = 0;
-	while (true)
-	{
-		ssize_t res = read(fd, buf.get(), buf_size);
-		if (res < 0)
-			throw fs_exception(errno, "read '" + native + "'");
-		if (res == 0)
-			break;
-		size += res;
-		SHA_Update(&sha, (u_char *)buf.get(), res);
-	}
-	SHA_Final(sha_res.complete, &sha);
-
-	if (size) {
-		ino_cache.update(uuid, sha_res.prefix);
-		return sha_res.prefix;
-	} else {
-		ino_cache.update(uuid, 0);
-		return 0;
-	}
+	std::lock_guard<std::mutex> lock(this->mutex);
+	// If some other thread inserted a checksum for the same file in the
+	// meantime, it's not a big deal.
+	this->cache[p.native()] = res;
+	if (this->cache.size() % 1000 == 0)
+		LOG(INFO, "Cache size: " << this->cache.size());
+	return res;
 }
 
 void hash_cache::initialize(
