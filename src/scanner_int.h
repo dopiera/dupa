@@ -6,6 +6,7 @@
 
 #include <boost/filesystem/convenience.hpp>
 
+#include "conf.h"
 #include "synch_thread_pool.h"
 
 template <class DirHandle>
@@ -17,7 +18,7 @@ void ScanDirectory(
 	std::stack<std::pair<path, DirHandle> > dirs_to_process;
 	dirs_to_process.push(std::make_pair(root, processor.RootDir(root)));
 
-	SyncThreadPool pool(4);  // FIXME: make configurable
+	SyncThreadPool pool(Conf().concurrency);
 	std::mutex mutex;
 
 	while (!dirs_to_process.empty()) {

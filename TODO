@@ -1,5 +1,3 @@
-- more config options:
-  - acceptable percentage
 - use size for weight
 - test for fuzzy_dedup
 - unify style

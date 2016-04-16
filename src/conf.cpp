@@ -31,7 +31,14 @@ void ParseArgv(int argc, char **argv) {
 		("sql_out,o", value<std::string>(&conf->sql_out),
 		 "if set, path to where SQLite3 results will be dumped")
 		("cache_only,1", "only generate checksums cache")
-		("verbose,v", "be verbose");
+		("verbose,v", "be verbose")
+		("concurrency,j", value<int>(&conf->concurrency)->default_value(4),
+		 "number of concurrently computed checksums")
+		("tolerable_diff_pct,t",
+		 value<int>(&conf->tolerable_diff_pct)->default_value(20),
+		 "directories different by this percent or less will be considered "
+		 "duplicates")
+		;
 
 	try {
 		options_description effective_desc;

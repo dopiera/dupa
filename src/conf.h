@@ -9,6 +9,8 @@ struct GlobalConfig {
 	std::string dump_cache_to;
 	std::string sql_out;
 	std::vector<std::string> dirs;
+	int concurrency;
+	int tolerable_diff_pct;
 	bool verbose;
 	bool cache_only;
 };

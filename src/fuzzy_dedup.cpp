@@ -224,7 +224,7 @@ void PropagateEquivalence(Node &root_node, EqClassesPtr eq_classes) {
 			detail::GetClosestNode(*node, possible_equivalents);
 
 		// FIXME make configurable
-		if (min_elem_and_dist.second < 0.3) {
+		if (min_elem_and_dist.second < Conf().tolerable_diff_pct / 100.) {
 			min_elem_and_dist.first->GetEqClass().AddNode(*node);
 		} else {
 			EqClass *eq_class = new EqClass;
