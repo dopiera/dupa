@@ -30,11 +30,13 @@ void ParseArgv(int argc, const char* const argv[]) {
 		 "path to which to dump the checksum cache")
 		("sql_out,o", value<std::string>(&conf->sql_out),
 		 "if set, path to where SQLite3 results will be dumped")
-		("cache_only,1", "only generate checksums cache")
+		("cache_only,1", bool_switch(&conf->cache_only)->default_value(false),
+		 "only generate checksums cache")
 		("use_size,s", bool_switch(&conf->use_size)->default_value(false),
 		 "use file size rather than number of files as a measure of directory "
 		 "sizes")
-		("verbose,v", "be verbose")
+		("verbose,v", bool_switch(&conf->verbose)->default_value(false),
+		 "be verbose")
 		("concurrency,j", value<int>(&conf->concurrency)->default_value(4),
 		 "number of concurrently computed checksums")
 		("tolerable_diff_pct,t",
@@ -57,7 +59,7 @@ void ParseArgv(int argc, const char* const argv[]) {
 		exit(1);
 	}
 
-	if (vm.count("verbose")) {
+	if (conf->verbose) {
 		stderr_loglevel = DEBUG;
 	}
 
@@ -71,8 +73,6 @@ void ParseArgv(int argc, const char* const argv[]) {
 		std::cerr << desc << std::endl;
 		exit(1);
 	}
-
-	conf->cache_only = vm.count("cache_only");
 }
 
 void InitTestConf() {
