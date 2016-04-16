@@ -15,7 +15,8 @@ struct GlobalConfig {
 	bool cache_only;
 };
 
-void ParseArgv(int argc, char **argv);
+void ParseArgv(int argc, const char* const argv[]);
+void InitTestConf();
 GlobalConfig const &Conf();
 
 

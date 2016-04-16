@@ -11,7 +11,7 @@
 static std::unique_ptr<GlobalConfig> conf;
 
 
-void ParseArgv(int argc, char **argv) {
+void ParseArgv(int argc, const char* const argv[]) {
 	conf.reset(new GlobalConfig);
 
 	using namespace boost::program_options;
@@ -70,6 +70,12 @@ void ParseArgv(int argc, char **argv) {
 	}
 
 	conf->cache_only = vm.count("cache_only");
+}
+
+void InitTestConf() {
+	// do whatever makes any sense so that default values are set
+	char const *argv[] ={"test_binary", ".", nullptr};
+	ParseArgv(2, argv);
 }
 
 GlobalConfig const &Conf() {

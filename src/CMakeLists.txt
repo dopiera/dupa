@@ -1,19 +1,25 @@
-add_library(conf_lib conf.cpp)
-
 add_library(log_lib log.cpp)
+
+add_library(conf_lib conf.cpp)
+target_link_libraries(conf_lib ${Boost_LIBRARIES})
+target_link_libraries(conf_lib log_lib)
+
+add_library(test_main test_main.cpp)
+target_link_libraries(test_main gtest)
 
 add_library(exceptions_lib exceptions.cpp)
 target_link_libraries(exceptions_lib ${Boost_LIBRARIES})
 
 add_library(file_tree_lib file_tree.cpp)
 target_link_libraries(file_tree_lib ${Boost_LIBRARIES})
+target_link_libraries(file_tree_lib conf_lib)
 
 add_library(synch_thread_pool_lib synch_thread_pool.cpp)
 target_link_libraries(file_tree_lib ${Boost_LIBRARIES})
 
 add_executable(file_tree_test file_tree_test.cpp)
 target_link_libraries(file_tree_test file_tree_lib)
-target_link_libraries(file_tree_test gtest_main)
+target_link_libraries(file_tree_test test_main)
 add_test(file_tree_test file_tree_test)
 
 add_library(sql_lib sql_lib.cpp)
@@ -36,7 +42,7 @@ target_link_libraries(fuzzy_dedup_lib synch_thread_pool_lib)
 
 add_executable(fuzzy_dedup_test fuzzy_dedup_test.cpp)
 target_link_libraries(fuzzy_dedup_test fuzzy_dedup_lib)
-target_link_libraries(fuzzy_dedup_test gtest_main)
+target_link_libraries(fuzzy_dedup_test test_main)
 add_test(fuzzy_dedup_test fuzzy_dedup_test)
 
 add_library(db_output_lib db_output.cpp)
