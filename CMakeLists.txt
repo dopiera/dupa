@@ -40,7 +40,6 @@ add_subdirectory(third_party/gtest)
 
 find_package(Threads REQUIRED)
 find_package(Boost COMPONENTS program_options filesystem system thread REQUIRED)
-find_package(Protobuf REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(Sqlite3 REQUIRED)
 
