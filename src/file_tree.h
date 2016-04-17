@@ -15,13 +15,15 @@ class Node;
 class EqClass;
 
 typedef std::vector<Node*> Nodes;
+typedef std::vector<Node const *> CNodes;
 
+// FIXME: the tree structure should be separated from the things computed on it.
+// The only reason why it is not is my laziness.
 class Node : private boost::noncopyable {
 public:
 	enum Type {
 		DIR,
 		FILE,
-		OTHER
 	};
 
 	// Size is only meaningful for regular files.
@@ -53,12 +55,14 @@ public:
 	// Traverse the whole subtree (including this node) in a an unspecified
 	// order and call callback on every node
 	void Traverse(std::function<void(Node*)> callback);
+	void Traverse(std::function<void(Node const *)> callback) const;
+	Nodes const &GetChildren() const { return this->children; }
+	bool IsAncestorOf(Node const &node);
 
 	~Node();
 
 private:
 	void SetEqClass(EqClass * eq_class);
-
 
 	std::string name;
 	Type type;
@@ -67,6 +71,9 @@ private:
 	Nodes children;
 	EqClass *eq_class;
 	int not_evaluated_children;
+public:
+	// FIXME: this is a great indication that separation is broken here
+	double unique_fraction;
 
 	friend double NodeDistance(Node const &n1, Node const &n2);
 	friend class EqClass;
@@ -90,5 +97,9 @@ struct EqClass : private boost::noncopyable {
 // Filter out only equivalence classes which have duplicates and are not already
 // described by their parents being duplicates of something else.
 void PrintEqClassses(std::vector<EqClass*> const &eq_classes);
+
+// Print directories which have no duplicates but whose contents are mostly
+// duplicated to file outside of it.
+void PrintScatteredDirectories(Node const &root);
 
 #endif /* FILE_TREE_H_4234 */

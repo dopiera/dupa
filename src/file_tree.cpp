@@ -63,9 +63,6 @@ double Node::GetWeight() const {
 				}
 				return weight;
 			}
-		case OTHER:
-			assert(false); // I don't even know how to implement it
-			return 0;
 	}
 	assert(false); // We shouldn't reach it;
 	return 0;
@@ -104,6 +101,20 @@ void Node::Traverse(std::function<void(Node*)> callback) {
 		child->Traverse(callback);
 	}
 	callback(this);
+}
+
+void Node::Traverse(std::function<void(Node const *)> callback) const {
+	for (Node const * const child : this->children)
+	{
+		child->Traverse(callback);
+	}
+	callback(this);
+}
+
+bool Node::IsAncestorOf(Node const &node) {
+	Node const *n = &node;
+	for (; n && n != this; n = n->parent);
+	return n != nullptr;
 }
 
 double NodeDistance(Node const &n1, Node const &n2) {
@@ -163,13 +174,24 @@ void EqClass::AddNode(Node &node) {
 	node.SetEqClass(this);
 }
 
+namespace {
+
 struct NodePathOrder : public std::binary_function<Node*, Node*, bool> {
-	bool operator()(Node* n1, Node* n2) const {
+	bool operator()(Node const * n1, Node const * n2) const {
 		return n1->BuildPath().native() < n2->BuildPath().native();
 	}
 };
 
+struct UniquenessOrder : public std::binary_function<Node*, Node*, bool> {
+	bool operator()(Node const * n1, Node const * n2) const {
+		return n1->unique_fraction > n2->unique_fraction;
+	}
+};
+
+}  // anonymous namespace
+
 void PrintEqClassses(std::vector<EqClass*> const &eq_classes) {
+	std::cout << "*** Classes of similar directories or files:" << std::endl;
 	for (EqClass const *eq_class : eq_classes) {
 		Nodes to_print(eq_class->nodes);
 		std::sort(to_print.begin(), to_print.end(), NodePathOrder());
@@ -183,5 +205,21 @@ void PrintEqClassses(std::vector<EqClass*> const &eq_classes) {
 			}
 		}
 		std::cout << std::endl;
+	}
+}
+
+void PrintScatteredDirectories(Node const &root) {
+	std::cout << "*** Directories consisting of mostly duplicates of files "
+		"scattered elsewhere:" << std::endl;
+	CNodes scattered_dirs;
+	root.Traverse([&scattered_dirs](Node const *n) {
+			if (n->GetType() == Node::DIR &&
+					n->unique_fraction * 100 < Conf().tolerable_diff_pct &&
+					n->GetEqClass().IsSingle()) {
+				scattered_dirs.push_back(n);
+			}});
+	std::sort(scattered_dirs.begin(), scattered_dirs.end(), UniquenessOrder());
+	for (Node const * dir : scattered_dirs) {
+		std::cout << dir->BuildPath().native() << std::endl;
 	}
 }

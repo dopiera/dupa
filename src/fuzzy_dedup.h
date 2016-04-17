@@ -53,6 +53,9 @@ void PropagateEquivalence(Node &root_node, EqClassesPtr eq_classes);
 // Sort equivalence classes according to weight. Largest first.
 void SortEqClasses(EqClassesPtr eq_classes);
 
+// Determine how unique directories are.
+CNodes CalculateUniqueness(Node & node);
+
 } /* namespace detail */
 
 #endif /* FUZZY_DEDUP_H_7234 */

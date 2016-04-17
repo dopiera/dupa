@@ -15,11 +15,12 @@ void CreateResultsDatabase(sqlite3 *db) {
 	     "interesting    BOOL    NOT NULL);"
 	   "CREATE TABLE Node("
          "id INT PRIMARY KEY     NOT NULL,"
-         "name           TEXT    NOT NULL,"
-         "path           TEXT    NOT NULL,"
-         "type           CHAR(5) NOT NULL,"
-         "cksum          INTEGER,"  // NULL for directories
-         "eq_class		 INT     NOT NULL,"
+         "name            TEXT    NOT NULL,"
+         "path            TEXT    NOT NULL,"
+         "type            CHAR(5) NOT NULL,"
+         "cksum           INTEGER,"  // NULL for directories
+         "unique_fraction DOUBLE NOT NULL,"
+         "eq_class		  INT     NOT NULL,"
 	    "FOREIGN KEY(eq_class) REFERENCES EqClass(id)"
 		"ON UPDATE RESTRICT ON DELETE RESTRICT);";
    char *err_msg_raw;
@@ -60,8 +61,8 @@ void DumpFuzzyDedupRes(sqlite3 *db, FuzzyDedupRes const &res) {
 		"INSERT INTO EqClass(id, nodes, weight, interesting) "
 		"VALUES(?, ?, ?, 0)";
 	char const node_sql[] =
-		"INSERT INTO Node(id, name, path, type, eq_class) "
-			"VALUES(?, ?, ?, ?, ?)";
+		"INSERT INTO Node(id, name, path, type, unique_fraction, eq_class) "
+			"VALUES(?, ?, ?, ?, ?, ?)";
 	StmtPtr eq_class_stmt(PrepareStmt(db, eq_class_sql));
 	StmtPtr node_stmt(PrepareStmt(db, node_sql));
 	StartTransaction(db);
@@ -89,6 +90,7 @@ void DumpFuzzyDedupRes(sqlite3 *db, FuzzyDedupRes const &res) {
 				n->GetName(),
 				n->BuildPath().native(),
 				std::string((n->GetType() == Node::FILE) ? "FILE" : "DIR"),
+				n->unique_fraction,
 				reinterpret_cast<uintptr_t>(&n->GetEqClass())
 				);
 		int res = sqlite3_step(node_stmt.get());

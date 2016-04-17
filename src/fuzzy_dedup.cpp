@@ -5,6 +5,7 @@
 #include <memory>
 #include <stack>
 #include <thread>
+#include <unordered_set>
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/convenience.hpp>
@@ -42,6 +43,9 @@ FuzzyDedupRes fuzzy_dedup(boost::filesystem::path const & dir)
 	// Let's sort the equivalence classes such that the most important ones are
 	// in the front.
 	detail::SortEqClasses(eq_classes);
+
+	// Calculate how unique directories are.
+	detail::CalculateUniqueness(*root_node);
 
 	return std::make_pair(root_node, eq_classes);
 }
@@ -260,6 +264,55 @@ struct EqClassWeightCmp : public std::binary_function<EqClass,EqClass,bool> {
 
 void SortEqClasses(EqClassesPtr eq_classes) {
 	eq_classes->sort(EqClassWeightCmp());
+}
+
+//======== CalculateUniqueness =================================================
+
+namespace {
+
+bool HasDuplicateElsewhere(
+		Node const &n, std::unordered_set<Node const *> const & not_here) {
+	// FIXME: perhaps it's worth sorting nodes in EqClasses and doing a binary
+	// search here. I'll not do premature optimizations, though.
+	for (Node * sibling : n.GetEqClass().nodes) {
+		if (not_here.find(sibling) == not_here.end())
+			return true;
+	}
+	return false;
+}
+
+} // anonymous namespace
+
+CNodes CalculateUniqueness(Node & node) {
+	assert(node.IsEvaluated());
+	switch (node.GetType()) {
+		case Node::FILE:
+			node.unique_fraction = node.GetEqClass().IsSingle() ? 1 : 0;
+			return CNodes(1, &node);
+		case Node::DIR:
+			std::unordered_set<Node const *> descendant_nodes;
+			for (Node * child : node.GetChildren()) {
+				CNodes const & child_nodes = CalculateUniqueness(*child);
+				std::copy(
+						child_nodes.begin(),
+						child_nodes.end(),
+						std::inserter(
+							descendant_nodes, descendant_nodes.end()));
+			}
+			double total_weight = 0;
+			double unique_weight = 0;
+			for (Node const * desc : descendant_nodes) {
+				total_weight += desc->GetWeight();
+				if (!HasDuplicateElsewhere(*desc, descendant_nodes))
+					unique_weight += desc->GetWeight();
+			}
+			node.unique_fraction = (total_weight == 0)
+				? 0  // empty directory is not unique
+				: (unique_weight / total_weight);
+			return CNodes(descendant_nodes.begin(), descendant_nodes.end());
+	}
+	assert(false);  // We really shouldn't be here.
+	return CNodes();
 }
 
 } /* namespace detail */

@@ -163,6 +163,58 @@ TEST(NodeTest, Traverse) {
 	ASSERT_EQ(gatherer.nodes, expected);
 }
 
+TEST(NodeTest, AncestorTestIndependentFiles) {
+	Node n1(Node::FILE, "n1");
+	EqClass eq_class1;
+	eq_class1.AddNode(n1);
+	ASSERT_TRUE(n1.IsAncestorOf(n1));
+	Node n2(Node::FILE, "n2");
+	EqClass eq_class2;
+	eq_class2.AddNode(n2);
+	ASSERT_TRUE(n2.IsAncestorOf(n2));
+	ASSERT_FALSE(n1.IsAncestorOf(n2));
+	ASSERT_FALSE(n2.IsAncestorOf(n1));
+}
+
+TEST(NodeTest, AncestorTest1Level) {
+	Node *n1 = new Node(Node::FILE, "n1");
+	Node n2(Node::FILE, "n2");
+	Node d1(Node::DIR, "d1");
+	d1.AddChild(n1);
+
+	EqClass dummy;
+	dummy.AddNode(*n1);
+	dummy.AddNode(n2);
+	dummy.AddNode(d1);
+
+	ASSERT_TRUE(d1.IsAncestorOf(*n1));
+	ASSERT_FALSE(d1.IsAncestorOf(n2));
+	ASSERT_FALSE(n1->IsAncestorOf(d1));
+}
+
+TEST(NodeTest, AncestorTest2Level) {
+	Node *n1 = new Node(Node::FILE, "n1");
+	Node n2(Node::FILE, "n2");
+	Node *d1 = new Node(Node::DIR, "d1");
+	Node d2(Node::DIR, "d2");
+	d1->AddChild(n1);
+	d2.AddChild(d1);
+
+	EqClass dummy;
+	dummy.AddNode(*n1);
+	dummy.AddNode(n2);
+	dummy.AddNode(*d1);
+	dummy.AddNode(d2);
+
+	ASSERT_TRUE(d1->IsAncestorOf(*n1));
+	ASSERT_FALSE(d1->IsAncestorOf(n2));
+	ASSERT_FALSE(n1->IsAncestorOf(*d1));
+	ASSERT_TRUE(d2.IsAncestorOf(*d1));
+	ASSERT_TRUE(d2.IsAncestorOf(*n1));
+	ASSERT_FALSE(n1->IsAncestorOf(d2));
+	ASSERT_FALSE(d1->IsAncestorOf(n2));
+}
+
 TEST(NodeWeight, File) {
 	Node n(Node::FILE, "abc");
 	ASSERT_DOUBLE_EQ(n.GetWeight(), 1);

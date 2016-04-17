@@ -231,6 +231,7 @@ int main(int argc, char **argv)
 			FuzzyDedupRes res = fuzzy_dedup(Conf().dirs[0]);
 			auto eq_classes = GetInteresingEqClasses(res);
 			PrintEqClassses(eq_classes);
+			PrintScatteredDirectories(*res.first);
 			if (!!db) {
 				LOG(INFO, "Dumping results to " << Conf().sql_out);
 				CreateResultsDatabase(db->db);
