@@ -74,9 +74,28 @@ struct PathHashesFiller : ScanProcessor<boost::filesystem::path> {
 	path_hashes &hashes_;
 };
 
-void fill_path_hashes(path const & start_dir, path_hashes & hashes) {
-	PathHashesFiller processor(hashes);
-	ScanDirectory(start_dir, processor);
+path_hashes ReadHashesFromDb(const string &db_path) {
+	path_hashes res;
+	SqliteScopedOpener db(db_path, SQLITE_OPEN_READONLY);
+	char const sql[] = "SELECT path, cksum FROM Cache";
+	SqliteExec(db.db, sql, [&] (sqlite3_stmt &row) {
+			std::string const path(reinterpret_cast<const char*>(
+								sqlite3_column_text(&row, 0)));
+			cksum const sum = sqlite3_column_int64(&row, 1);
+			if (sum)
+				res.insert(path_hash(path, sum));
+			});
+	return res;
+}
+
+void fill_path_hashes(std::string const & start_dir, path_hashes & hashes) {
+	std::string const db_prefix = "db:";
+	if (!Conf().ignore_db_prefix && start_dir.find(db_prefix) == 0) {
+		hashes = ReadHashesFromDb(start_dir.substr(db_prefix.length()));
+	} else {
+		PathHashesFiller processor(hashes);
+		ScanDirectory(start_dir, processor);
+	}
 }
 
 typedef vector<string> paths;
@@ -109,9 +128,9 @@ void dir_compare(path const & dir1, path const & dir2)
 	path_hashes hashes1, hashes2;
 
 	std::thread h1filler(std::bind(
-				fill_path_hashes, std::ref(dir1), std::ref(hashes1)));
-	std::thread h2filler(
-			std::bind(fill_path_hashes, std::ref(dir2), std::ref(hashes2)));
+				fill_path_hashes, std::ref(dir1.native()), std::ref(hashes1)));
+	std::thread h2filler(std::bind(
+				fill_path_hashes, std::ref(dir2.native()), std::ref(hashes2)));
 	h1filler.join();
 	h2filler.join();
 

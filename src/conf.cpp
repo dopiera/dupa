@@ -35,6 +35,9 @@ void ParseArgv(int argc, const char* const argv[]) {
 		("use_size,s", bool_switch(&conf->use_size)->default_value(false),
 		 "use file size rather than number of files as a measure of directory "
 		 "sizes")
+		("ignore_db_prefix,r",
+		 bool_switch(&conf->ignore_db_prefix)->default_value(false),
+		 "when parsing directory name, ignore the \"db:\" prefix")
 		("verbose,v", bool_switch(&conf->verbose)->default_value(false),
 		 "be verbose")
 		("concurrency,j", value<int>(&conf->concurrency)->default_value(4),
