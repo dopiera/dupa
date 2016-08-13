@@ -61,3 +61,4 @@ target_link_libraries(dup_ident log_lib)
 target_link_libraries(dup_ident db_output_lib)
 target_link_libraries(dup_ident conf_lib)
 
+install(TARGETS dup_ident RUNTIME DESTINATION bin)
