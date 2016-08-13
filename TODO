@@ -1,4 +1,3 @@
 - test for fuzzy_dedup
 - unify style
-- detect scatterred directories
 - less brutal error handling
