@@ -1,7 +1,7 @@
 *.core
 *.o
 *.a
-dup_ident
+dupa
 *.pb.*
 CMakeCache.txt
 CMakeFiles

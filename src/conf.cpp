@@ -21,7 +21,7 @@ void ParseArgv(int argc, const char* const argv[]) {
 		("directory,d",
 		 value<std::vector<std::string> >(&conf->dirs)->composing(),
 		 "directory to analyze");
-	options_description desc("usage: dup_ident dir1 [dir2]");
+	options_description desc("usage: dupa dir1 [dir2]");
 	desc.add_options()
 		("help,h", "produce help message")
 		("read_cache_from,c", value<std::string>(&conf->read_cache_from),
