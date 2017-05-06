@@ -16,7 +16,7 @@ typedef boost::ptr_vector<EqClass> EqClasses;
 typedef std::shared_ptr<EqClasses> EqClassesPtr;
 typedef std::pair<std::shared_ptr<Node>, EqClassesPtr> FuzzyDedupRes;
 
-FuzzyDedupRes fuzzy_dedup(boost::filesystem::path const & start_dir);
+FuzzyDedupRes fuzzy_dedup(std::string const & start_dir);
 std::vector<EqClass*> GetInteresingEqClasses(FuzzyDedupRes &all);
 
 // This shouldn't be public but is for testing.
@@ -26,7 +26,7 @@ typedef std::unordered_multimap<cksum, Node*> Sum2Node;
 
 // Recursively scan directory dir. Return the directory's hierarchy and a
 // multimap from checksums to Nodes in the hierarchy for all regular files.
-std::pair<Node*, Sum2Node> ScanDirectory(boost::filesystem::path const & dir);
+std::pair<Node*, Sum2Node> ScanDirectory(std::string const & dir);
 
 // Create an equivalence class and assign all empty directories to it.
 std::unique_ptr<EqClass> ClassifyEmptyDirs(Node &node);

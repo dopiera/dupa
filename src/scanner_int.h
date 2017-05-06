@@ -1,5 +1,9 @@
+#ifndef SCANNER_INT_H_2340
+#define SCANNER_INT_H_2340
+
 #include "scanner.h"
 
+#include <map>
 #include <stack>
 #include <thread>
 #include <utility>
@@ -7,7 +11,17 @@
 #include <boost/filesystem/convenience.hpp>
 
 #include "conf.h"
+#include "log.h"
+#include "hash_cache.h"
 #include "synch_thread_pool.h"
+
+namespace detail {
+
+boost::filesystem::path common_path_prefix(
+		boost::filesystem::path const & p1,
+		boost::filesystem::path const & p2);
+
+}  // namespace
 
 template <class DirHandle>
 void ScanDirectory(
@@ -54,6 +68,86 @@ void ScanDirectory(
 			}
 		}
 	}
-	pool.Stop();
 }
 
+template <class DirHandle>
+void ScanDb(
+		std::unordered_map<std::string, file_info> db,
+		ScanProcessor<DirHandle> &processor) {
+	using boost::filesystem::path;
+
+	if (db.size() == 0) {
+		return;
+	}
+
+	path common_prefix = path(db.begin()->first).parent_path();
+	for (auto const & path_and_fi : db) {
+		common_prefix = detail::common_path_prefix(
+				common_prefix,
+				path(path_and_fi.first).parent_path());
+	}
+	size_t const prefix_len = std::distance(
+			common_prefix.begin(),
+			common_prefix.end());
+
+	std::map<path, DirHandle> created_dirs;
+	created_dirs[common_prefix] = processor.RootDir(common_prefix);
+	for (auto const & path_and_fi : db) {
+		LOG(INFO, path_and_fi.first);
+		path const analyzed(path_and_fi.first);
+		path const dir(analyzed.parent_path());
+
+		path::const_iterator it = dir.begin();
+		for (size_t i = 0; i < prefix_len; ++i) {
+			++it;
+		}
+
+		path parent = common_prefix;
+		DirHandle parent_handle = created_dirs[common_prefix];
+
+		for (; it != dir.end(); ++it) {
+			path const to_insert = parent / *it;
+			auto created_dir_it = created_dirs.find(to_insert);
+			if (created_dir_it == created_dirs.end()) {
+				created_dir_it = created_dirs.insert(
+						std::make_pair(
+							to_insert,
+							processor.Dir(*it, parent_handle)
+							)).first;
+			}
+			parent = to_insert;
+			parent_handle = created_dir_it->second;
+		}
+		processor.File(
+				analyzed.filename(),
+				parent_handle,
+				path_and_fi.second);
+	}
+}
+
+template <class DirHandle>
+void ScanDb(
+		boost::filesystem::path const &db_path,
+		ScanProcessor<DirHandle> &processor) {
+	using boost::filesystem::path;
+
+	auto db = read_cache_from_db(db_path.native());
+	ScanDb(db, processor);
+}
+
+// Will call one of the 2 above.
+template <class DirHandle>
+void ScanDirectoryOrDb(
+		std::string const &path,
+		ScanProcessor<DirHandle> &processor) {
+	std::string const db_prefix = "db:";
+	if (!Conf().ignore_db_prefix && path.find(db_prefix) == 0) {
+		ScanDb(
+				boost::filesystem::path(path.substr(db_prefix.length())),
+				processor);
+	} else {
+		ScanDirectory(path, processor);
+	}
+}
+
+#endif  /* SCANNER_INT_H_2340 */

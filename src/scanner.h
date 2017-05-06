@@ -29,4 +29,16 @@ void ScanDirectory(
 		boost::filesystem::path const &root,
 		ScanProcessor<DirHandle> &processor);
 
+template <class DirHandle>
+void ScanDb(
+		boost::filesystem::path const &db,
+		ScanProcessor<DirHandle> &processor);
+
+// Will call one of the 2 above.
+template <class DirHandle>
+void ScanDirectoryOrDb(
+		std::string const &db,
+		ScanProcessor<DirHandle> &processor);
+
+
 #endif /* SCANNER_H_6513 */

@@ -11,5 +11,6 @@ CTestTestfile.cmake
 Testing
 file_tree_test
 fuzzy_dedup_test
+scanner_test
 cscope.*
 install_manifest.txt

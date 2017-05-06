@@ -74,28 +74,9 @@ struct PathHashesFiller : ScanProcessor<boost::filesystem::path> {
 	path_hashes &hashes_;
 };
 
-path_hashes ReadHashesFromDb(const string &db_path) {
-	path_hashes res;
-	SqliteScopedOpener db(db_path, SQLITE_OPEN_READONLY);
-	char const sql[] = "SELECT path, cksum FROM Cache";
-	SqliteExec(db.db, sql, [&] (sqlite3_stmt &row) {
-			std::string const path(reinterpret_cast<const char*>(
-								sqlite3_column_text(&row, 0)));
-			cksum const sum = sqlite3_column_int64(&row, 1);
-			if (sum)
-				res.insert(path_hash(path, sum));
-			});
-	return res;
-}
-
 void fill_path_hashes(std::string const & start_dir, path_hashes & hashes) {
-	std::string const db_prefix = "db:";
-	if (!Conf().ignore_db_prefix && start_dir.find(db_prefix) == 0) {
-		hashes = ReadHashesFromDb(start_dir.substr(db_prefix.length()));
-	} else {
-		PathHashesFiller processor(hashes);
-		ScanDirectory(start_dir, processor);
-	}
+	PathHashesFiller processor(hashes);
+	ScanDirectoryOrDb(start_dir, processor);
 }
 
 typedef vector<string> paths;

@@ -38,6 +38,7 @@ void SyncThreadPool::Submit(std::function<void()> const &fun) {
 }
 
 SyncThreadPool::~SyncThreadPool() {
+	this->Stop();
 	assert(this->closing);
 	assert(this->threads.empty());
 }

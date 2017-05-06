@@ -15,7 +15,7 @@
 #include "scanner_int.h"
 #include "synch_thread_pool.h"
 
-FuzzyDedupRes fuzzy_dedup(boost::filesystem::path const & dir)
+FuzzyDedupRes fuzzy_dedup(std::string const & dir)
 {
 	// Scan the directory and compute checksums for regular files
 	std::pair<Node*, detail::Sum2Node> const root_and_sum_2_node =
@@ -104,12 +104,12 @@ struct TreeCtorProcessor : public ScanProcessor<Node*> {
 	std::unique_ptr<Node> root_;
 };
 
-std::pair<Node*, Sum2Node> ScanDirectory(boost::filesystem::path const & dir) {
+std::pair<Node*, Sum2Node> ScanDirectory(std::string const & dir) {
 	std::pair<Node*, Sum2Node> res;
 
 	TreeCtorProcessor processor;
 
-	ScanDirectory(dir, processor);
+	ScanDirectoryOrDb(dir, processor);
 
 	res.second.swap(processor.sum2node_);
 	res.first = processor.root_.release();

@@ -26,6 +26,9 @@ struct file_info
 	cksum sum;
 };
 
+std::unordered_map<std::string, file_info> read_cache_from_db(
+		std::string const & path);
+
 class hash_cache
 {
 public:
@@ -45,7 +48,6 @@ private:
 		);
 	~hash_cache();
 	void store_cksums();
-	void read_cksums(std::string const & path);
 	static void initialize(
 		std::string const & read_cache_from,
 		std::string const & dump_cache_to);

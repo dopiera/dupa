@@ -7,18 +7,7 @@
 #include <boost/ptr_container/ptr_vector.hpp>
 
 #include "gtest/gtest.h"
-
-namespace boost {
-namespace filesystem {
-
-// Make boost::filesystem::path printable so that assertions have meaningful
-// text.
-void PrintTo(path const &p, std::ostream  *os) {
-	(*os) << p.native();
-}
-
-} /* namespace filesystem */
-} /* namespace boost */
+#include "test_common.h"
 
 void PrintTo(Node const*n, std::ostream  *os) {
 	boost::filesystem::PrintTo(n->BuildPath(), os);

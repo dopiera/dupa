@@ -123,6 +123,27 @@ cksum compute_cksum(
 
 } /* anonymous namespace */
 
+std::unordered_map<std::string, file_info> read_cache_from_db(
+		std::string const & path) {
+	std::unordered_map<std::string, file_info> cache;
+	SqliteScopedOpener db(path, SQLITE_OPEN_READONLY);
+	char const sql[] = "SELECT path, cksum, size, mtime FROM Cache";
+	SqliteExec(db.db, sql, [&] (sqlite3_stmt &row) {
+			std::string const path(reinterpret_cast<const char*>(
+								sqlite3_column_text(&row, 0)));
+			cksum const sum = sqlite3_column_int64(&row, 1);
+			off_t const size = sqlite3_column_int64(&row, 2);
+			time_t const mtime = sqlite3_column_int64(&row, 3);
+			DLOG("Read \"" << path << "\": " << sum << " " << size << " " <<
+					mtime);
+
+			file_info f_info(size, mtime, sum);
+
+			cache.insert(std::make_pair(path, f_info));
+			});
+	return cache;
+}
+
 hash_cache * hash_cache::instance;
 
 hash_cache::initializer::initializer(
@@ -144,7 +165,9 @@ hash_cache::hash_cache(
 		) {
 	if (!read_cache_from.empty())
 	{
-		this->read_cksums(read_cache_from.c_str());
+		auto cache = read_cache_from_db(read_cache_from);
+		std::lock_guard<std::mutex> lock(this->mutex);
+		this->cache.swap(cache);
 	}
 	if (!dump_cache_to.empty())
 	{
@@ -207,27 +230,6 @@ void hash_cache::store_cksums()
 		   throw sqlite_exception(db, "Clearing EqClass bindings");
 	}
 	EndTransaction(db);
-}
-
-void hash_cache::read_cksums(std::string const & path)
-{
-	std::lock_guard<std::mutex> lock(this->mutex);
-	SqliteScopedOpener db(path, SQLITE_OPEN_READONLY);
-	char const sql[] = "SELECT path, cksum, size, mtime FROM Cache";
-	this->cache.clear();
-	SqliteExec(db.db, sql, [&] (sqlite3_stmt &row) {
-			std::string const path(reinterpret_cast<const char*>(
-								sqlite3_column_text(&row, 0)));
-			cksum const sum = sqlite3_column_int64(&row, 1);
-			off_t const size = sqlite3_column_int64(&row, 2);
-			time_t const mtime = sqlite3_column_int64(&row, 3);
-			DLOG("Read \"" << path << "\": " << sum << " " << size << " " <<
-					mtime);
-
-			file_info f_info(size, mtime, sum);
-
-			this->cache.insert(std::make_pair(path, f_info));
-			});
 }
 
 namespace {
