@@ -1,4 +1,4 @@
-#include "src/scanner_int.h"
+#include "scanner_int.h"
 
 #include <iterator>
 
