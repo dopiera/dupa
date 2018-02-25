@@ -38,6 +38,9 @@ void ParseArgv(int argc, const char* const argv[]) {
 		("ignore_db_prefix,r",
 		 bool_switch(&conf->ignore_db_prefix)->default_value(false),
 		 "when parsing directory name, ignore the \"db:\" prefix")
+		("skip_renames,w",
+		 bool_switch(&conf->skip_renames)->default_value(false),
+		 "when comparing directories, don't print renames")
 		("verbose,v", bool_switch(&conf->verbose)->default_value(false),
 		 "be verbose")
 		("concurrency,j", value<int>(&conf->concurrency)->default_value(4),

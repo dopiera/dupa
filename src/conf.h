@@ -15,6 +15,7 @@ struct GlobalConfig {
 	bool cache_only;
 	bool use_size;
 	bool ignore_db_prefix;
+	bool skip_renames;
 };
 
 void ParseArgv(int argc, const char* const argv[]);

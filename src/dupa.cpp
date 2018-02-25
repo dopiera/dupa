@@ -152,7 +152,10 @@ void dir_compare(path const & dir1, path const & dir2)
 			paths ps = get_paths_for_hash(hashes2h, h1);
 			if (not ps.empty())
 			{
-				cout << "RENAME: " << p1 << " -> " << ps << endl;
+				if (!Conf().skip_renames)
+				{
+					cout << "RENAME: " << p1 << " -> " << ps << endl;
+				}
 			}
 			else
 			{
