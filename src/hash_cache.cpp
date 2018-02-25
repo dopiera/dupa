@@ -98,7 +98,7 @@ cksum compute_cksum(
 	} sha_res;
 
 	SHA_CTX sha;
-	SHA_Init(&sha);
+	SHA1_Init(&sha);
 	size_t size = 0;
 	while (true)
 	{
@@ -108,9 +108,9 @@ cksum compute_cksum(
 		if (res == 0)
 			break;
 		size += res;
-		SHA_Update(&sha, (u_char *)buf.get(), res);
+		SHA1_Update(&sha, (u_char *)buf.get(), res);
 	}
-	SHA_Final(sha_res.complete, &sha);
+	SHA1_Final(sha_res.complete, &sha);
 
 	if (size) {
 		ino_cache.update(uuid, sha_res.prefix);
