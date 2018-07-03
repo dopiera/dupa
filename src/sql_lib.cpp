@@ -1,5 +1,7 @@
 #include "sql_lib.h"
 
+#include "log.h"
+
 SqliteScopedOpener::SqliteScopedOpener(std::string const &path, int flags) {
 	int res = sqlite3_open_v2(path.c_str(), &this->db, flags, NULL);
 	if (res != SQLITE_OK) {
@@ -22,9 +24,10 @@ SqliteScopedOpener::SqliteScopedOpener(std::string const &path, int flags) {
 SqliteScopedOpener::~SqliteScopedOpener() {
 	int res = sqlite3_close(this->db);
 	if (res != SQLITE_OK) {
-		throw sqlite_exception(
-				res, std::string("Clsoing DB ")
-				+ sqlite3_db_filename(this->db, "main"));
+		// Let's not crash the whole program and simply log it.
+		LOG(ERROR, "Clsoing DB " << sqlite3_db_filename(this->db, "main") <<
+				"failed with code " << res << "(" << sqlite3_errstr(res) <<
+				"), ignoring");
 	}
 }
 
