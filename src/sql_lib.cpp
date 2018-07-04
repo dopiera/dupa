@@ -2,7 +2,7 @@
 
 #include "log.h"
 
-SqliteScopedOpener::SqliteScopedOpener(std::string const &path, int flags) {
+SqliteConnection::SqliteConnection(std::string const &path, int flags) {
 	int res = sqlite3_open_v2(path.c_str(), &this->db, flags, NULL);
 	if (res != SQLITE_OK) {
 		throw sqlite_exception(res, "Opening DB " + path);
@@ -13,15 +13,15 @@ SqliteScopedOpener::SqliteScopedOpener(std::string const &path, int flags) {
 		"PRAGMA journal_mode = OFF;"
 		"PRAGMA foreign_keys = 1;";  // one can never be too sure
 	char *err_msg_raw;
-	res = sqlite3_exec(db, sql, NULL, NULL, &err_msg_raw);
+	res = sqlite3_exec(this->db, sql, NULL, NULL, &err_msg_raw);
 	if (res != SQLITE_OK) {
 		auto err_msg = detail::MakeSqliteUnique(err_msg_raw);
-		throw sqlite_exception(db, std::string("Creating results tables: " ) +
-				err_msg.get());
+		throw sqlite_exception(this->db,
+				std::string("Creating results tables: " ) + err_msg.get());
 	}
 }
 
-SqliteScopedOpener::~SqliteScopedOpener() {
+SqliteConnection::~SqliteConnection() {
 	int res = sqlite3_close(this->db);
 	if (res != SQLITE_OK) {
 		// Let's not crash the whole program and simply log it.
@@ -31,44 +31,61 @@ SqliteScopedOpener::~SqliteScopedOpener() {
 	}
 }
 
-StmtPtr PrepareStmt(sqlite3 *db, std::string const &sql) {
+SqliteConnection::StmtPtr SqliteConnection::PrepareStmt(std::string const &sql)
+{
 	sqlite3_stmt *raw_stmt_ptr;
-	int res = sqlite3_prepare_v2(db, sql.c_str(), -1, &raw_stmt_ptr, NULL);
+	int res = sqlite3_prepare_v2(this->db, sql.c_str(), -1, &raw_stmt_ptr,
+			NULL);
 	if (res != SQLITE_OK) {
-	   throw sqlite_exception(db, std::string("Preparing statement: " ) + sql);
+	   throw sqlite_exception(this->db, std::string("Preparing statement: " ) +
+			   sql);
 	}
 	return StmtPtr(raw_stmt_ptr);
 }
 
 
-void StartTransaction(sqlite3 *db) {
+void SqliteConnection::StartTransaction() {
 	char *err_msg_raw;
-	int res = sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &err_msg_raw);
+	int res = sqlite3_exec(this->db, "BEGIN TRANSACTION", NULL, NULL,
+			&err_msg_raw);
 	if (res != SQLITE_OK) {
 		auto err_msg = detail::MakeSqliteUnique(err_msg_raw);
-		throw sqlite_exception(db, "Starting transaction");
+		throw sqlite_exception(this->db, "Starting transaction");
 	}
 }
 
-void EndTransaction(sqlite3 *db) {
+void SqliteConnection::EndTransaction() {
 	char *err_msg_raw;
-	int res = sqlite3_exec(db, "End TRANSACTION", NULL, NULL, &err_msg_raw);
+	int res = sqlite3_exec(this->db, "End TRANSACTION", NULL, NULL, &err_msg_raw);
 	if (res != SQLITE_OK) {
 		auto err_msg = detail::MakeSqliteUnique(err_msg_raw);
-		throw sqlite_exception(db, "Finishing transaction");
+		throw sqlite_exception(this->db, "Finishing transaction");
 	}
 }
 
-void SqliteExec(
-		sqlite3 *db,
+void SqliteConnection::SqliteExec(
 		const std::string &sql,
 		std::function<void(sqlite3_stmt &)> row_cb
 		) {
-	StmtPtr stmt(PrepareStmt(db, sql));
+	StmtPtr stmt(this->PrepareStmt(sql));
 	int res;
-	while ((res = sqlite3_step(stmt.get())) == SQLITE_ROW) {
+	while (row_cb && (res = sqlite3_step(stmt.get())) == SQLITE_ROW) {
 		row_cb(*stmt);
 	}
-	if (res != SQLITE_DONE)
-		throw sqlite_exception(db, "Executing " + sql);
+	if (res != SQLITE_DONE && res != SQLITE_OK)
+		throw sqlite_exception(this->db, "Executing " + sql);
+}
+
+void SqliteConnection::SqliteExec(const std::string &sql) {
+	char *err_msg_raw;
+	int res = sqlite3_exec(this->db, sql.c_str(), NULL, NULL, &err_msg_raw);
+	if (res != SQLITE_OK) {
+		auto err_msg = detail::MakeSqliteUnique(err_msg_raw);
+		throw sqlite_exception(this->db,
+				std::string("Executing SQL (") + sql + "): " + err_msg.get());
+	}
+}
+
+void SqliteConnection::Fail(std::string const &op) {
+	throw sqlite_exception(this->db, op);
 }

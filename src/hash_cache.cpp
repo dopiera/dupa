@@ -126,9 +126,9 @@ cksum compute_cksum(
 std::unordered_map<std::string, file_info> read_cache_from_db(
 		std::string const & path) {
 	std::unordered_map<std::string, file_info> cache;
-	SqliteScopedOpener db(path, SQLITE_OPEN_READONLY);
+	SqliteConnection db(path, SQLITE_OPEN_READONLY);
 	char const sql[] = "SELECT path, cksum, size, mtime FROM Cache";
-	SqliteExec(db.db, sql, [&] (sqlite3_stmt &row) {
+	db.SqliteExec(sql, [&] (sqlite3_stmt &row) {
 			std::string const path(reinterpret_cast<const char*>(
 								sqlite3_column_text(&row, 0)));
 			cksum const sum = sqlite3_column_int64(&row, 1);
@@ -171,7 +171,7 @@ hash_cache::hash_cache(
 	}
 	if (!dump_cache_to.empty())
 	{
-		this->db_holder.reset(new SqliteScopedOpener(dump_cache_to));
+		this->db.reset(new SqliteConnection(dump_cache_to));
 	}
 }
 
@@ -180,37 +180,29 @@ hash_cache::~hash_cache()
 	this->store_cksums();
 }
 
-static void create_or_empty_table(sqlite3 *db) {
-	char const sql[] =
+static void create_or_empty_table(SqliteConnection &db) {
+	db.SqliteExec(
 		"DROP TABLE IF EXISTS Cache;"
 		"CREATE TABLE Cache("
 			"path           TEXT    UNIQUE NOT NULL,"
 			"cksum          INTEGER NOT NULL,"
 			"size           INTEGER NOT NULL,"
-			"mtime          INTEGER NOT NULL);";
-	char *err_msg_raw;
-	int res = sqlite3_exec(db, sql, NULL, NULL, &err_msg_raw);
-	if (res != SQLITE_OK) {
-		auto err_msg = detail::MakeSqliteUnique(err_msg_raw);
-		throw sqlite_exception(db, std::string("Creating results tables: " ) +
-				err_msg.get());
-	}
+			"mtime          INTEGER NOT NULL);");
 }
 
 void hash_cache::store_cksums()
 {
 	std::lock_guard<std::mutex> lock(this->mutex);
-	if (!this->db_holder)
+	if (!this->db)
 	{
 		return;
 	}
-
-	sqlite3 *db = this->db_holder->db;
+	SqliteConnection &db(*this->db);
 	create_or_empty_table(db);
 	char const sql[] =
 		"INSERT INTO Cache(path, cksum, size, mtime) VALUES(?, ?, ?, ?)";
-	StmtPtr stmt(PrepareStmt(db, sql));
-	StartTransaction(db);
+	SqliteConnection::StmtPtr stmt(db.PrepareStmt(sql));
+	db.StartTransaction();
 	for (auto const & cksum_and_info : this->cache)
 	{
 		SqliteBind(
@@ -221,15 +213,15 @@ void hash_cache::store_cksums()
 				cksum_and_info.second.mtime);
 		int res = sqlite3_step(stmt.get());
 		if (res != SQLITE_DONE)
-			throw sqlite_exception(db, "Inserting EqClass");
+			db.Fail("Inserting EqClass");
 		res = sqlite3_clear_bindings(stmt.get());
 		if (res != SQLITE_OK)
-		   throw sqlite_exception(db, "Clearing EqClass bindings");
+			db.Fail("Clearing EqClass bindings");
 		res = sqlite3_reset(stmt.get());
 		if (res != SQLITE_OK)
-		   throw sqlite_exception(db, "Clearing EqClass bindings");
+			db.Fail("Clearing EqClass bindings");
 	}
-	EndTransaction(db);
+	db.EndTransaction();
 }
 
 namespace {

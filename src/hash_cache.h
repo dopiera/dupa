@@ -57,7 +57,7 @@ private:
 
 	typedef std::unordered_map<std::string, file_info> cache_map;
 	cache_map cache;
-	std::unique_ptr<SqliteScopedOpener> db_holder;
+	std::unique_ptr<SqliteConnection> db;
 	std::mutex mutex;
 };
 

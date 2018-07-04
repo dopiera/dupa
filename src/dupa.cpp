@@ -227,19 +227,19 @@ int main(int argc, char **argv)
 		}
 		if (Conf().dirs.size() == 1) {
 			// Open database first to catch configuration issues soon.
-			std::unique_ptr<SqliteScopedOpener> db(
+			std::unique_ptr<SqliteConnection> db(
 					Conf().sql_out.empty()
 					? nullptr
-					: new SqliteScopedOpener(Conf().sql_out));
+					: new SqliteConnection(Conf().sql_out));
 			FuzzyDedupRes res = fuzzy_dedup(Conf().dirs[0]);
 			auto eq_classes = GetInteresingEqClasses(res);
 			PrintEqClassses(eq_classes);
 			PrintScatteredDirectories(*res.first);
 			if (!!db) {
 				LOG(INFO, "Dumping results to " << Conf().sql_out);
-				CreateResultsDatabase(db->db);
-				DumpFuzzyDedupRes(db->db, res);
-				DumpInterestingEqClasses(db->db, eq_classes);
+				CreateResultsDatabase(*db);
+				DumpFuzzyDedupRes(*db, res);
+				DumpInterestingEqClasses(*db, eq_classes);
 			}
 		} else if (Conf().dirs.size() == 2) {
 			dir_compare(Conf().dirs[0], Conf().dirs[1]);

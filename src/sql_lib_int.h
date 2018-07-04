@@ -25,9 +25,14 @@ private:
 
 namespace detail {
 
+struct SqliteFinalizer : public std::unary_function<sqlite3_stmt*,void> {
+	void operator()(sqlite3_stmt *p) const { sqlite3_finalize(p); }
+};
 struct SqliteDeleter : public std::unary_function<void*,void> {
 	void operator()(void *p) const { sqlite3_free(p); }
 };
+
+typedef std::unique_ptr<sqlite3_stmt, SqliteFinalizer> StmtPtr;
 
 template <class C>
 inline std::unique_ptr<C, detail::SqliteDeleter> MakeSqliteUnique(C *o) {
