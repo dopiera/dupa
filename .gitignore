@@ -14,3 +14,4 @@ fuzzy_dedup_test
 scanner_test
 cscope.*
 install_manifest.txt
+compile_commands.json

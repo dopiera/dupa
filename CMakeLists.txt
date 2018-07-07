@@ -5,6 +5,8 @@ project (dupa C CXX)
 set (CMAKE_CXX_STANDARD 11)
 enable_testing()
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(COMMON_FLAGS " -D_FILE_OFFSET_BITS=64 -rdynamic")
 set(WARNING_FLAGS " -Wall -Wunused-function -Wwrite-strings -Wformat -Wformat-security -Wparentheses -Wsequence-point -Wno-system-headers -Werror -Winit-self")
 set(CFLAGS_DEBUG " -g -O0 -fstack-protector-all -D_GLIBXX_DEBUG -D_GLIBXX_DEBUG_PEDANTIC")
