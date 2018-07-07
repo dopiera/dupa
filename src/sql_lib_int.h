@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <type_traits>
+#include <tuple>
 
 #include <sqlite3.h>
 
@@ -89,6 +90,76 @@ template <typename T, typename... Args>
 inline void SqliteBindImpl(sqlite3_stmt &s, int idx, T const &a, Args... args) {
 	SqliteBind1<T>()(s, idx, a);
 	SqliteBindImpl(s, idx + 1, args...);
+}
+
+template <typename C, typename Enabled = void>
+struct ExtractCell
+{
+	static_assert(sizeof(C) == -1, "Don't know how to extract this type.");
+	C operator()(sqlite3_stmt &s, int idx);
+};
+
+template <typename C>
+struct ExtractCell<C, typename std::enable_if<std::is_integral<C>::value>::type>
+{
+	C operator()(sqlite3_stmt &row, int idx) {
+		return sqlite3_column_int64(&row, idx);
+	}
+};
+
+template <typename C>
+struct ExtractCell<C, typename std::enable_if<std::is_floating_point<C>::value>::type>
+{
+	C operator()(sqlite3_stmt &row, int idx) {
+		return sqlite3_column_double(&row, idx);
+	}
+};
+
+template <>
+struct ExtractCell<std::string>
+{
+	std::string operator()(sqlite3_stmt &row, int idx) {
+		return std::string(reinterpret_cast<const char*>(
+					sqlite3_column_text(&row, idx)));
+	}
+};
+
+template <typename... Args>
+struct ExtractImpl;
+
+template<>
+struct ExtractImpl<>
+{
+	inline std::tuple<> operator()(
+			sqlite3 &db, sqlite3_stmt &row, int idx) const {
+		return std::tuple<>();
+	}
+};
+
+template<typename T, typename... Args>
+struct ExtractImpl<T, Args...>
+{
+	inline std::tuple<T, Args...> operator()(
+			sqlite3 &db, sqlite3_stmt &row, int idx) const {
+		const T &t = ExtractCell<T>()(row, idx);
+		const int err = sqlite3_errcode(&db);
+		if (err == SQLITE_NOMEM) {
+			// This is an sqlite3 weirdness. Extracting values will only fail if
+			// there is a memory allocation failure. What's worse, otherwise,
+			// the errcode is not set at all, so we need to compare to this
+			// specific error code only.
+			throw sqlite_exception(&db, std::string("Extracting value (") +
+					std::to_string(idx) + ") from result");
+		}
+		return std::tuple_cat(
+				std::tuple<T>(t),
+				ExtractImpl<Args...>()(db, row, idx + 1));
+	}
+};
+
+template<typename... Args>
+std::tuple<Args...> Extract(sqlite3 &db, sqlite3_stmt &row) {
+	return ExtractImpl<Args...>()(db, row, 0);
 }
 
 } /* namespace detail */

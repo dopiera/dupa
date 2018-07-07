@@ -63,19 +63,6 @@ void SqliteConnection::EndTransaction() {
 	}
 }
 
-void SqliteConnection::SqliteExec(
-		const std::string &sql,
-		std::function<void(sqlite3_stmt &)> row_cb
-		) {
-	StmtPtr stmt(this->PrepareStmt(sql));
-	int res;
-	while (row_cb && (res = sqlite3_step(stmt.get())) == SQLITE_ROW) {
-		row_cb(*stmt);
-	}
-	if (res != SQLITE_DONE && res != SQLITE_OK)
-		throw sqlite_exception(this->db, "Executing " + sql);
-}
-
 void SqliteConnection::SqliteExec(const std::string &sql) {
 	char *err_msg_raw;
 	int res = sqlite3_exec(this->db, sql.c_str(), NULL, NULL, &err_msg_raw);
