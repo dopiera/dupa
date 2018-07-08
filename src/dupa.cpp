@@ -232,15 +232,20 @@ int main(int argc, char **argv)
 					? nullptr
 					: new SqliteConnection(Conf().sql_out));
 			FuzzyDedupRes res = fuzzy_dedup(Conf().dirs[0]);
-			auto eq_classes = GetInteresingEqClasses(res);
-			PrintEqClassses(eq_classes);
-			PrintScatteredDirectories(*res.first);
-			if (!!db) {
-				LOG(INFO, "Dumping results to " << Conf().sql_out);
-				CreateResultsDatabase(*db);
-				DumpFuzzyDedupRes(*db, res);
-				DumpInterestingEqClasses(*db, eq_classes);
-			}
+            if (!res.first) {
+                // no nodes at all
+                std::cout << "No files in specified location" << std::endl;
+            } else {
+                auto eq_classes = GetInteresingEqClasses(res);
+                PrintEqClassses(eq_classes);
+                PrintScatteredDirectories(*res.first);
+                if (!!db) {
+                    LOG(INFO, "Dumping results to " << Conf().sql_out);
+                    CreateResultsDatabase(*db);
+                    DumpFuzzyDedupRes(*db, res);
+                    DumpInterestingEqClasses(*db, eq_classes);
+                }
+            }
 		} else if (Conf().dirs.size() == 2) {
 			dir_compare(Conf().dirs[0], Conf().dirs[1]);
 			return 0;

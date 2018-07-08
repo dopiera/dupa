@@ -21,6 +21,10 @@ FuzzyDedupRes fuzzy_dedup(std::string const & dir)
 	std::pair<Node*, detail::Sum2Node> const root_and_sum_2_node =
 		detail::ScanDirectory(dir);
 	std::shared_ptr<Node> root_node(root_and_sum_2_node.first);
+    if (!root_node) {
+        // No files at all.
+        return FuzzyDedupRes();
+    }
 	detail::Sum2Node const &sum_2_node = root_and_sum_2_node.second;
 
 	// Create equivalence classes for all regular files
