@@ -127,21 +127,19 @@ std::unordered_map<std::string, file_info> read_cache_from_db(
 		std::string const & path) {
 	std::unordered_map<std::string, file_info> cache;
 	SqliteConnection db(path, SQLITE_OPEN_READONLY);
-	char const sql[] = "SELECT path, cksum, size, mtime FROM Cache";
-	std::function<void(std::tuple<std::string, cksum, off_t, time_t> const&)> f =
-		[&] (std::tuple<std::string, cksum, off_t, time_t> const &row) {
-			std::string const &path = std::get<0>(row);
-			cksum const sum = std::get<1>(row);
-			off_t const size = std::get<2>(row);
-			time_t const mtime = std::get<3>(row);
-			DLOG("Read \"" << path << "\": " << sum << " " << size << " " <<
-					mtime);
+	for (const auto &row : db.Query<std::string, cksum, off_t, time_t>(
+				"SELECT path, cksum, size, mtime FROM Cache")) {
+		std::string const &path = std::get<0>(row);
+		cksum const sum = std::get<1>(row);
+		off_t const size = std::get<2>(row);
+		time_t const mtime = std::get<3>(row);
+		DLOG("Read \"" << path << "\": " << sum << " " << size << " " <<
+				mtime);
 
-			file_info f_info(size, mtime, sum);
+		file_info f_info(size, mtime, sum);
 
-			cache.insert(std::make_pair(path, f_info));
-			};
-	db.SqliteExec<std::string, cksum, off_t, time_t>(std::string(sql), f);
+		cache.insert(std::make_pair(path, f_info));
+	}
 	return cache;
 }
 
