@@ -163,7 +163,6 @@ public:
 	template<typename... Args>
 	std::unique_ptr<OutStream<Args...>> BatchInsert(const std::string &sql);
 	void SqliteExec(const std::string &sql);
-	void Fail(std::string const &op);
 
 private:
 	StmtPtr PrepareStmt(std::string const &sql);

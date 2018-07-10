@@ -54,10 +54,6 @@ void SqliteConnection::SqliteExec(const std::string &sql) {
 	}
 }
 
-void SqliteConnection::Fail(std::string const &op) {
-	throw sqlite_exception(this->db, op);
-}
-
 SqliteTransaction::SqliteTransaction(SqliteConnection &conn)
 	: conn(conn), ongoing(true) {
 	this->conn.SqliteExec("START TRANSACTION");
