@@ -27,58 +27,46 @@ void CreateResultsDatabase(SqliteConnection &db) {
 
 void DumpInterestingEqClasses(SqliteConnection &db,
 		std::vector<EqClass*> const &eq_classes) {
-	char const eq_class_sql[] =
-		"UPDATE EqClass SET interesting = 1 WHERE id == ?";
-	SqliteConnection::StmtPtr eq_class_stmt(db.PrepareStmt(eq_class_sql));
 	db.StartTransaction();
-	for (EqClass const *eq_class: eq_classes) {
-		SqliteBind(
-				*eq_class_stmt,
-				reinterpret_cast<uintptr_t>(eq_class)
-				);
-		int res = sqlite3_step(eq_class_stmt.get());
-		if (res != SQLITE_DONE)
-			db.Fail("Inserting EqClass");
-		res = sqlite3_clear_bindings(eq_class_stmt.get());
-		if (res != SQLITE_OK)
-		   db.Fail("Clearing EqClass bindings");
-		res = sqlite3_reset(eq_class_stmt.get());
-		if (res != SQLITE_OK)
-		   db.Fail("Clearing EqClass bindings");
-	}
+	auto out = db.BatchInsert<uintptr_t>(
+			"UPDATE EqClass SET interesting = 1 WHERE id == ?");
+	std::transform(eq_classes.begin(), eq_classes.end(),
+			SqliteOutputIt<uintptr_t>(*out),
+			[] (EqClass *eq_class_ptr) {
+				return std::make_tuple(
+						reinterpret_cast<uintptr_t>(eq_class_ptr));
+				});
 	db.EndTransaction();
 }
 
 void DumpFuzzyDedupRes(SqliteConnection &db, FuzzyDedupRes const &res) {
-	char const eq_class_sql[] =
-		"INSERT INTO EqClass(id, nodes, weight, interesting) "
-		"VALUES(?, ?, ?, 0)";
-	char const node_sql[] =
-		"INSERT INTO Node(id, name, path, type, unique_fraction, eq_class) "
-			"VALUES(?, ?, ?, ?, ?, ?)";
-	SqliteConnection::StmtPtr eq_class_stmt(db.PrepareStmt(eq_class_sql));
-	SqliteConnection::StmtPtr node_stmt(db.PrepareStmt(node_sql));
 	db.StartTransaction();
-	for (EqClass const &eq_class: *res.second) {
-		SqliteBind(
-				*eq_class_stmt,
-				reinterpret_cast<uintptr_t>(&eq_class),
-				eq_class.GetNumNodes(),
-				eq_class.GetWeight()
-				);
-		int res = sqlite3_step(eq_class_stmt.get());
-		if (res != SQLITE_DONE)
-			db.Fail("Inserting EqClass");
-		res = sqlite3_clear_bindings(eq_class_stmt.get());
-		if (res != SQLITE_OK)
-		   db.Fail("Clearing EqClass bindings");
-		res = sqlite3_reset(eq_class_stmt.get());
-		if (res != SQLITE_OK)
-		   db.Fail("Clearing EqClass bindings");
-	}
+
+	auto eq_class_out = db.BatchInsert<uintptr_t, size_t, double>(
+			"INSERT INTO EqClass(id, nodes, weight, interesting) "
+			"VALUES(?, ?, ?, 0)");
+
+	std::transform(res.second->begin(), res.second->end(),
+			SqliteOutputIt<uintptr_t, size_t, double>(*eq_class_out),
+			[] (EqClass const &eq_class) {
+				return std::make_tuple(
+					reinterpret_cast<uintptr_t>(&eq_class),
+					eq_class.GetNumNodes(),
+					eq_class.GetWeight());
+			});
+
+	auto node_out = db.BatchInsert<
+			uintptr_t,
+			std::string,
+			std::string,
+			std::string,
+			double,
+			uintptr_t>(
+					"INSERT INTO Node("
+					"id, name, path, type, unique_fraction, eq_class) "
+					"VALUES(?, ?, ?, ?, ?, ?)");
 	res.first->Traverse([&] (Node const *n) {
-		SqliteBind(
-				*node_stmt,
+		node_out->Write(
 				reinterpret_cast<uintptr_t>(n),
 				n->GetName(),
 				n->BuildPath().native(),
@@ -86,15 +74,6 @@ void DumpFuzzyDedupRes(SqliteConnection &db, FuzzyDedupRes const &res) {
 				n->unique_fraction,
 				reinterpret_cast<uintptr_t>(&n->GetEqClass())
 				);
-		int res = sqlite3_step(node_stmt.get());
-		if (res != SQLITE_DONE)
-		   db.Fail("Inserting EqClass");
-		res = sqlite3_clear_bindings(node_stmt.get());
-		if (res != SQLITE_OK)
-		   db.Fail("Clearing EqClass bindings");
-		res = sqlite3_reset(node_stmt.get());
-		if (res != SQLITE_OK)
-		   db.Fail("Clearing EqClass bindings");
 	});
 	db.EndTransaction();
 }

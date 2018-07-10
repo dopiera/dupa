@@ -9,9 +9,28 @@
 
 #include "sql_lib_int.h"
 
+// Reimplement C++14 index_sequence_for
+
+template <size_t... I> struct index_sequence {
+        typedef size_t value_type;
+        static constexpr size_t size() { return sizeof...(I); }
+};
+
+template <std::size_t N, std::size_t... I>
+struct build_index_impl : build_index_impl<N - 1, N - 1, I...> {};
+template <std::size_t... I>
+struct build_index_impl<0, I...> : index_sequence<I...> {};
+
+template <class... Ts>
+struct index_sequence_for : build_index_impl<sizeof...(Ts)> {};
+
+
+
 class SqliteConnection;
 template<typename... Args>
 class InStream;
+template<typename... Args>
+class OutStream;
 
 template <typename... Args>
 class SqliteInputIt : public std::iterator<
@@ -40,6 +59,24 @@ private:
 	bool ok;
 };
 
+template <typename... Args>
+class SqliteOutputIt : public std::iterator<
+						 std::output_iterator_tag,
+						 void,
+						 void,
+						 void,
+						 void> {
+public:
+	SqliteOutputIt(OutStream<Args...>& s) : stream(&s) {}
+	SqliteOutputIt& operator*() { return *this; }
+	SqliteOutputIt& operator++() { return *this; }
+	SqliteOutputIt& operator++(int) { return *this; }
+	SqliteOutputIt& operator=(std::tuple<Args...> const &args);
+
+private:
+	OutStream<Args...> *stream;
+};
+
 template<typename... Args>
 class InStream {
 public:
@@ -60,6 +97,22 @@ private:
 	// We have to buffer the next row to be able to answer if it's EOF.
 	// There is no way to check other than sqlite3_step which reads the row.
 	std::unique_ptr<std::tuple<Args...>> next_row;
+	friend class SqliteConnection;
+};
+
+template<typename... Args>
+class OutStream {
+public:
+	void Write(const Args&... args);
+private:
+	typedef detail::StmtPtr StmtPtr;
+
+	OutStream(SqliteConnection &conn, StmtPtr &&stmt);
+	OutStream(const OutStream&) = delete;
+	OutStream &operator=(const OutStream&) = delete;
+
+	SqliteConnection &conn;
+	StmtPtr stmt;
 	friend class SqliteConnection;
 };
 
@@ -98,12 +151,16 @@ public:
 	StmtPtr PrepareStmt(std::string const &sql);
 	template<typename... Args>
 	InStreamHolder<Args...> Query(const std::string &sql);
+	template<typename... Args>
+	std::unique_ptr<OutStream<Args...>> BatchInsert(const std::string &sql);
 	void SqliteExec(const std::string &sql);
 	void Fail(std::string const &op);
 
 private:
 	template<typename... Args>
 	friend void InStream<Args...>::Fetch();
+	template<typename... Args>
+	friend void OutStream<Args...>::Write(const Args&...);
 	sqlite3 *db;
 };
 
@@ -154,6 +211,23 @@ void SqliteInputIt<Args...>::Fetch() {
 	}
 }
 
+//======== SqliteInputIt =======================================================
+
+// Helper for dispatching tuple's arguments to Write()
+template<typename... Args, size_t... I>
+inline void dispatch_impl(OutStream<Args...> &stream,
+		const std::tuple<Args...>& t, index_sequence<I...>) {
+	stream.Write(std::get<I>(t)...);
+}
+
+
+template<typename... Args>
+SqliteOutputIt<Args...>& SqliteOutputIt<Args...>::operator=(
+		std::tuple<Args...> const &args) {
+	dispatch_impl(*this->stream, args, index_sequence_for<Args...>());
+	return *this;
+}
+
 //======== Misc ================================================================
 
 template <typename... Args>
@@ -170,6 +244,13 @@ InStreamHolder<Args...> SqliteConnection::Query(
 				new InStream<Args...>(*this, this->PrepareStmt(sql))
 			);
 	return InStreamHolder<Args...>(in_stream);
+}
+
+template<typename... Args>
+std::unique_ptr<OutStream<Args...>> SqliteConnection::BatchInsert(
+		const std::string &sql) {
+	return std::unique_ptr<OutStream<Args...>>(
+			new OutStream<Args...>(*this, this->PrepareStmt(sql)));
 }
 
 //======== InStream ============================================================
@@ -220,6 +301,29 @@ SqliteInputIt<Args...> InStream<Args...>::begin() {
 template<typename... Args>
 SqliteInputIt<Args...> InStream<Args...>::end() {
 	return SqliteInputIt<Args...>();
+}
+
+//======== OutStream ===========================================================
+
+template<typename... Args>
+OutStream<Args...>::OutStream(SqliteConnection &conn, detail::StmtPtr &&stmt)
+	: conn(conn), stmt(std::move(stmt)) {
+}
+
+template<typename... Args>
+void OutStream<Args...>::Write(const Args&... args) {
+	SqliteBind(*this->stmt, args...);
+	int res = sqlite3_step(this->stmt.get());
+	if (res != SQLITE_DONE)
+		throw sqlite_exception(this->conn.db, "Advancing output stream");
+	res = sqlite3_clear_bindings(this->stmt.get());
+	if (res != SQLITE_OK)
+		throw sqlite_exception(this->conn.db,
+				"Clearing output stream bindings");
+	res = sqlite3_reset(this->stmt.get());
+	if (res != SQLITE_OK)
+		throw sqlite_exception(this->conn.db,
+				"Resetting statement in output stream");
 }
 
 #endif /* SQL_LIB_H_3341 */

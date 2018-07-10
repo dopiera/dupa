@@ -198,28 +198,18 @@ void hash_cache::store_cksums()
 	}
 	SqliteConnection &db(*this->db);
 	create_or_empty_table(db);
-	char const sql[] =
-		"INSERT INTO Cache(path, cksum, size, mtime) VALUES(?, ?, ?, ?)";
-	SqliteConnection::StmtPtr stmt(db.PrepareStmt(sql));
 	db.StartTransaction();
-	for (auto const & cksum_and_info : this->cache)
-	{
-		SqliteBind(
-				*stmt,
-				cksum_and_info.first,
-				cksum_and_info.second.sum,
-				cksum_and_info.second.size,
-				cksum_and_info.second.mtime);
-		int res = sqlite3_step(stmt.get());
-		if (res != SQLITE_DONE)
-			db.Fail("Inserting EqClass");
-		res = sqlite3_clear_bindings(stmt.get());
-		if (res != SQLITE_OK)
-			db.Fail("Clearing EqClass bindings");
-		res = sqlite3_reset(stmt.get());
-		if (res != SQLITE_OK)
-			db.Fail("Clearing EqClass bindings");
-	}
+	auto out = db.BatchInsert<std::string, cksum, off_t, time_t>(
+			"INSERT INTO Cache(path, cksum, size, mtime) VALUES(?, ?, ?, ?)");
+	std::transform(this->cache.begin(), this->cache.end(),
+			SqliteOutputIt<std::string, cksum, off_t, time_t>(*out),
+			[] (const std::pair<std::string, file_info> &file) {
+				return std::make_tuple(
+						file.first,
+						file.second.sum,
+						file.second.size,
+						file.second.mtime);
+				});
 	db.EndTransaction();
 }
 
