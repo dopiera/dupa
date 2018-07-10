@@ -137,6 +137,18 @@ private:
 	std::shared_ptr<InStream<Args...>> impl;
 };
 
+class SqliteTransaction {
+public:
+	explicit SqliteTransaction(SqliteConnection &conn);
+	~SqliteTransaction();
+	void Rollback();
+	void Commit();
+
+private:
+	SqliteConnection &conn;
+	bool ongoing;
+};
+
 class SqliteConnection {
 public:
 	typedef detail::StmtPtr StmtPtr;
@@ -146,9 +158,6 @@ public:
 			int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE
 			);
 	~SqliteConnection();
-	void StartTransaction();
-	void EndTransaction();
-	StmtPtr PrepareStmt(std::string const &sql);
 	template<typename... Args>
 	InStreamHolder<Args...> Query(const std::string &sql);
 	template<typename... Args>
@@ -157,11 +166,14 @@ public:
 	void Fail(std::string const &op);
 
 private:
+	StmtPtr PrepareStmt(std::string const &sql);
+
+	sqlite3 *db;
+
 	template<typename... Args>
 	friend void InStream<Args...>::Fetch();
 	template<typename... Args>
 	friend void OutStream<Args...>::Write(const Args&...);
-	sqlite3 *db;
 };
 
 //======== SqliteInputIt =======================================================

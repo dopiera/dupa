@@ -27,7 +27,7 @@ void CreateResultsDatabase(SqliteConnection &db) {
 
 void DumpInterestingEqClasses(SqliteConnection &db,
 		std::vector<EqClass*> const &eq_classes) {
-	db.StartTransaction();
+	SqliteTransaction trans(db);
 	auto out = db.BatchInsert<uintptr_t>(
 			"UPDATE EqClass SET interesting = 1 WHERE id == ?");
 	std::transform(eq_classes.begin(), eq_classes.end(),
@@ -36,11 +36,11 @@ void DumpInterestingEqClasses(SqliteConnection &db,
 				return std::make_tuple(
 						reinterpret_cast<uintptr_t>(eq_class_ptr));
 				});
-	db.EndTransaction();
+	trans.Commit();
 }
 
 void DumpFuzzyDedupRes(SqliteConnection &db, FuzzyDedupRes const &res) {
-	db.StartTransaction();
+	SqliteTransaction trans(db);
 
 	auto eq_class_out = db.BatchInsert<uintptr_t, size_t, double>(
 			"INSERT INTO EqClass(id, nodes, weight, interesting) "
@@ -75,5 +75,5 @@ void DumpFuzzyDedupRes(SqliteConnection &db, FuzzyDedupRes const &res) {
 				reinterpret_cast<uintptr_t>(&n->GetEqClass())
 				);
 	});
-	db.EndTransaction();
+	trans.Commit();
 }

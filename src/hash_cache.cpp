@@ -198,7 +198,7 @@ void hash_cache::store_cksums()
 	}
 	SqliteConnection &db(*this->db);
 	create_or_empty_table(db);
-	db.StartTransaction();
+	SqliteTransaction trans(db);
 	auto out = db.BatchInsert<std::string, cksum, off_t, time_t>(
 			"INSERT INTO Cache(path, cksum, size, mtime) VALUES(?, ?, ?, ?)");
 	std::transform(this->cache.begin(), this->cache.end(),
@@ -210,7 +210,7 @@ void hash_cache::store_cksums()
 						file.second.size,
 						file.second.mtime);
 				});
-	db.EndTransaction();
+	trans.Commit();
 }
 
 namespace {

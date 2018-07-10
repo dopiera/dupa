@@ -44,25 +44,6 @@ SqliteConnection::StmtPtr SqliteConnection::PrepareStmt(std::string const &sql)
 }
 
 
-void SqliteConnection::StartTransaction() {
-	char *err_msg_raw;
-	int res = sqlite3_exec(this->db, "BEGIN TRANSACTION", NULL, NULL,
-			&err_msg_raw);
-	if (res != SQLITE_OK) {
-		auto err_msg = detail::MakeSqliteUnique(err_msg_raw);
-		throw sqlite_exception(this->db, "Starting transaction");
-	}
-}
-
-void SqliteConnection::EndTransaction() {
-	char *err_msg_raw;
-	int res = sqlite3_exec(this->db, "End TRANSACTION", NULL, NULL, &err_msg_raw);
-	if (res != SQLITE_OK) {
-		auto err_msg = detail::MakeSqliteUnique(err_msg_raw);
-		throw sqlite_exception(this->db, "Finishing transaction");
-	}
-}
-
 void SqliteConnection::SqliteExec(const std::string &sql) {
 	char *err_msg_raw;
 	int res = sqlite3_exec(this->db, sql.c_str(), NULL, NULL, &err_msg_raw);
@@ -75,4 +56,27 @@ void SqliteConnection::SqliteExec(const std::string &sql) {
 
 void SqliteConnection::Fail(std::string const &op) {
 	throw sqlite_exception(this->db, op);
+}
+
+SqliteTransaction::SqliteTransaction(SqliteConnection &conn)
+	: conn(conn), ongoing(true) {
+	this->conn.SqliteExec("START TRANSACTION");
+}
+
+SqliteTransaction::~SqliteTransaction() {
+	if (this->ongoing) {
+		// If this fails, the application is going to die, which is good because
+		// if we can't roll back, we better not risk committing bad data.
+		this->Rollback();
+	}
+}
+
+void SqliteTransaction::Rollback() {
+	this->conn.SqliteExec("ROLLBACK TRANSACTION");
+	this->ongoing = false;
+}
+
+void SqliteTransaction::Commit() {
+	this->conn.SqliteExec("COMMIT TRANSACTION");
+	this->ongoing = false;
 }
