@@ -14,7 +14,7 @@
 
 #include "exceptions.h"
 #include "log.h"
-#include "sql_lib.h"
+#include "sql_lib_int.h"
 
 namespace {
 

@@ -1,10 +1,14 @@
-#include "sql_lib.h"
+#include "sql_lib_int.h"
 
 #include "log.h"
 
+struct SqliteDeleter : public std::unary_function<void*,void> {
+	void operator()(void *p) const { sqlite3_free(p); }
+};
+
 template <class C>
-inline std::unique_ptr<C, detail::SqliteDeleter> MakeSqliteUnique(C *o) {
-	return std::unique_ptr<C, detail::SqliteDeleter>(o);
+inline std::unique_ptr<C, SqliteDeleter> MakeSqliteUnique(C *o) {
+	return std::unique_ptr<C, SqliteDeleter>(o);
 }
 
 //======== sqlite_exception ====================================================
