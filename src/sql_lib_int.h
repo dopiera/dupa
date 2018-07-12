@@ -13,13 +13,11 @@
 #include <sqlite3.h>
 
 struct sqlite_exception : std::exception {
-	sqlite_exception(int sqlite_code, std::string const &operation) :
-		reason(operation + ": " + sqlite3_errstr(sqlite_code)) {}
-	sqlite_exception(sqlite3 *db, std::string const &operation) :
-		reason(operation + ": " + sqlite3_errmsg(db)) {}
-	sqlite_exception(std::string const &reason) : reason(reason) {}
-	~sqlite_exception() throw() {}
-	virtual char const * what() const throw() { return this->reason.c_str(); }
+	sqlite_exception(int sqlite_code, std::string const &operation);
+	sqlite_exception(sqlite3 *db, std::string const &operation);
+	sqlite_exception(std::string const &reason);
+	~sqlite_exception() throw();
+	virtual char const * what() const throw();
 private:
 	std::string reason;
 };
@@ -34,11 +32,6 @@ struct SqliteDeleter : public std::unary_function<void*,void> {
 };
 
 typedef std::unique_ptr<sqlite3_stmt, SqliteFinalizer> StmtPtr;
-
-template <class C>
-inline std::unique_ptr<C, detail::SqliteDeleter> MakeSqliteUnique(C *o) {
-	return std::unique_ptr<C, detail::SqliteDeleter>(o);
-}
 
 template <typename C, class Enabled = void>
 struct SqliteBind1
@@ -162,6 +155,22 @@ std::tuple<Args...> Extract(sqlite3 &db, sqlite3_stmt &row) {
 	return ExtractImpl<Args...>()(db, row, 0);
 }
 
+// Reimplement C++14 index_sequence_for
+
+template <size_t... I> struct index_sequence {
+        typedef size_t value_type;
+        static constexpr size_t size() { return sizeof...(I); }
+};
+
+template <std::size_t N, std::size_t... I>
+struct build_index_impl : build_index_impl<N - 1, N - 1, I...> {};
+template <std::size_t... I>
+struct build_index_impl<0, I...> : index_sequence<I...> {};
+
+template <class... Ts>
+struct index_sequence_for : build_index_impl<sizeof...(Ts)> {};
+
 } /* namespace detail */
+
 
 #endif /* SQL_LIB_INT_H_7792 */

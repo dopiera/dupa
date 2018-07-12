@@ -9,28 +9,12 @@
 
 #include "sql_lib_int.h"
 
-// Reimplement C++14 index_sequence_for
-
-template <size_t... I> struct index_sequence {
-        typedef size_t value_type;
-        static constexpr size_t size() { return sizeof...(I); }
-};
-
-template <std::size_t N, std::size_t... I>
-struct build_index_impl : build_index_impl<N - 1, N - 1, I...> {};
-template <std::size_t... I>
-struct build_index_impl<0, I...> : index_sequence<I...> {};
-
-template <class... Ts>
-struct index_sequence_for : build_index_impl<sizeof...(Ts)> {};
-
-
-
 class SqliteConnection;
 template<typename... Args>
 class InStream;
 template<typename... Args>
 class OutStream;
+
 
 template <typename... Args>
 class SqliteInputIt : public std::iterator<
@@ -42,7 +26,7 @@ class SqliteInputIt : public std::iterator<
 
 public:
 	SqliteInputIt() : stream(nullptr), ok(false) {}
-	SqliteInputIt(InStream<Args...>& s) : stream(&s) { Fetch(); }
+	explicit SqliteInputIt(InStream<Args...>& s) : stream(&s) { Fetch(); }
 
 	const std::tuple<Args...>& operator*() const;
 	const std::tuple<Args...>* operator->() const;
@@ -67,7 +51,7 @@ class SqliteOutputIt : public std::iterator<
 						 void,
 						 void> {
 public:
-	SqliteOutputIt(OutStream<Args...>& s) : stream(&s) {}
+	explicit SqliteOutputIt(OutStream<Args...>& s) : stream(&s) {}
 	SqliteOutputIt& operator*() { return *this; }
 	SqliteOutputIt& operator++() { return *this; }
 	SqliteOutputIt& operator++(int) { return *this; }
@@ -151,8 +135,6 @@ private:
 
 class SqliteConnection {
 public:
-	typedef detail::StmtPtr StmtPtr;
-
 	SqliteConnection(
 			std::string const &path,
 			int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE
@@ -165,6 +147,8 @@ public:
 	void SqliteExec(const std::string &sql);
 
 private:
+	typedef detail::StmtPtr StmtPtr;
+
 	StmtPtr PrepareStmt(std::string const &sql);
 
 	sqlite3 *db;
@@ -222,12 +206,12 @@ void SqliteInputIt<Args...>::Fetch() {
 	}
 }
 
-//======== SqliteInputIt =======================================================
+//======== SqliteOutputIt ======================================================
 
 // Helper for dispatching tuple's arguments to Write()
 template<typename... Args, size_t... I>
 inline void dispatch_impl(OutStream<Args...> &stream,
-		const std::tuple<Args...>& t, index_sequence<I...>) {
+		const std::tuple<Args...>& t, detail::index_sequence<I...>) {
 	stream.Write(std::get<I>(t)...);
 }
 
@@ -235,7 +219,7 @@ inline void dispatch_impl(OutStream<Args...> &stream,
 template<typename... Args>
 SqliteOutputIt<Args...>& SqliteOutputIt<Args...>::operator=(
 		std::tuple<Args...> const &args) {
-	dispatch_impl(*this->stream, args, index_sequence_for<Args...>());
+	dispatch_impl(*this->stream, args, detail::index_sequence_for<Args...>());
 	return *this;
 }
 
