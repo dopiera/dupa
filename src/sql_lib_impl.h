@@ -159,7 +159,6 @@ struct index_sequence_for : build_index_impl<sizeof...(Ts)> {};
 
 template <typename... Args>
 const std::tuple<Args...>& SqliteInputIt<Args...>::operator*() const {
-	assert(this->ok);
 	return this->value;
 }
 
@@ -170,14 +169,14 @@ const std::tuple<Args...>* SqliteInputIt<Args...>::operator->() const {
 
 template <typename... Args>
 SqliteInputIt<Args...>& SqliteInputIt<Args...>::operator++() {
-	assert(this->ok);
+	assert(this->stream);
 	Fetch();
 	return *this;
 }
 
 template <typename... Args>
 SqliteInputIt<Args...> SqliteInputIt<Args...>::operator++(int) {
-	assert(this->ok);
+	assert(this->stream);
 	SqliteInputIt tmp = *this;
 	Fetch();
 	return tmp;
@@ -185,7 +184,11 @@ SqliteInputIt<Args...> SqliteInputIt<Args...>::operator++(int) {
 
 template <typename... Args>
 bool SqliteInputIt<Args...>::operator==(const SqliteInputIt<Args...>& o) const {
-	return (this->ok == o.ok) && (!this->ok || this->stream == o.stream);
+    if (this->stream) {
+        return this->stream == o.stream;
+    } else {
+        return !o.stream;
+    }
 }
 
 template <typename... Args>
@@ -195,10 +198,12 @@ bool SqliteInputIt<Args...>::operator!=(const SqliteInputIt<Args...>& o) const {
 
 template <typename... Args>
 void SqliteInputIt<Args...>::Fetch() {
-	this->ok = this->stream && !this->stream->Eof();
-	if (this->ok) {
-		this->value = stream->Read();
-		this->ok = !this->stream->Eof();
+    if (this->stream) {
+        if (this->stream->Eof()) {
+            this->stream = nullptr;
+        } else {
+            this->value = stream->Read();
+        }
 	}
 }
 

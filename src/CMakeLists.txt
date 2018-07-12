@@ -33,6 +33,11 @@ target_link_libraries(sql_lib ${Sqlite3_LIBRARIES})
 target_link_libraries(sql_lib log_lib)
 target_link_libraries(sql_lib exceptions_lib)
 
+add_executable(sql_lib_test sql_lib_test.cpp)
+target_link_libraries(sql_lib_test sql_lib)
+target_link_libraries(sql_lib_test test_main)
+add_test(sql_lib_test sql_lib_test)
+
 add_library(hash_cache_lib hash_cache.cpp)
 target_link_libraries(hash_cache_lib ${Boost_LIBRARIES})
 target_link_libraries(hash_cache_lib ${OPENSSL_CRYPTO_LIBRARY})

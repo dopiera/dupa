@@ -49,7 +49,7 @@ class SqliteInputIt : public std::iterator<
 						 const std::tuple<Args...>&> {
 
 public:
-	SqliteInputIt() : stream(nullptr), ok(false) {}
+	SqliteInputIt() : stream(nullptr) {}
 	explicit SqliteInputIt(InStream<Args...>& s) : stream(&s) { Fetch(); }
 
 	const std::tuple<Args...>& operator*() const;
@@ -64,7 +64,6 @@ private:
 
 	InStream<Args...> *stream;
 	std::tuple<Args...> value;
-	bool ok;
 };
 
 template <typename... Args>
