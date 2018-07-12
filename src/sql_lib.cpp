@@ -15,18 +15,28 @@ inline std::unique_ptr<C, SqliteDeleter> MakeSqliteUnique(C *o) {
 
 sqlite_exception::sqlite_exception(
 		int sqlite_code, std::string const &operation) :
-		reason(operation + ": " + sqlite3_errstr(sqlite_code)) {
+	reason(operation + ": " + sqlite3_errstr(sqlite_code)),
+	sqlite_code(sqlite_code) {
 }
 
 sqlite_exception::sqlite_exception(sqlite3 *db, std::string const &operation) :
-		reason(operation + ": " + sqlite3_errmsg(db)) {}
+	reason(operation + ": " + sqlite3_errmsg(db)),
+	sqlite_code(sqlite3_errcode(db)) {
+}
 
-sqlite_exception::sqlite_exception(std::string const &reason) : reason(reason) {}
+sqlite_exception::sqlite_exception(std::string const &reason) :
+	reason(reason),
+	sqlite_code(SQLITE_ERROR) {
+}
 
 sqlite_exception::~sqlite_exception() throw() {}
 
 char const * sqlite_exception::what() const throw() {
 	return this->reason.c_str();
+}
+
+int sqlite_exception::code() const throw() {
+	return this->sqlite_code;
 }
 
 //======== SqliteConnection ====================================================

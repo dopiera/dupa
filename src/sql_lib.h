@@ -33,8 +33,10 @@ struct sqlite_exception : std::exception {
 	sqlite_exception(std::string const &reason);
 	~sqlite_exception() throw();
 	virtual char const * what() const throw();
+	int code() const throw();
 private:
 	std::string reason;
+	int sqlite_code;
 };
 
 
