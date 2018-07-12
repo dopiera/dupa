@@ -30,6 +30,8 @@ add_test(file_tree_test file_tree_test)
 add_library(sql_lib sql_lib.cpp)
 target_link_libraries(sql_lib ${Boost_LIBRARIES})
 target_link_libraries(sql_lib ${Sqlite3_LIBRARIES})
+target_link_libraries(sql_lib log_lib)
+target_link_libraries(sql_lib exceptions_lib)
 
 add_library(hash_cache_lib hash_cache.cpp)
 target_link_libraries(hash_cache_lib ${Boost_LIBRARIES})

@@ -1,5 +1,5 @@
-#ifndef SQL_LIB_INT_H_7792
-#define SQL_LIB_INT_H_7792
+#ifndef SQL_LIB_IMPL_H_7792
+#define SQL_LIB_IMPL_H_7792
 
 #include <cstdint>
 #include <cstring>

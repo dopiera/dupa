@@ -2,7 +2,7 @@
 
 #include <new>
 
-#include "sql_lib_int.h"
+#include "sql_lib_impl.h"
 
 void CreateResultsDatabase(SqliteConnection &db) {
    db.SqliteExec(
