@@ -317,5 +317,9 @@ void OutStream<Args...>::Write(const Args&... args) {
 				"Resetting statement in output stream");
 }
 
+template<typename... Args>
+SqliteOutputIt<Args...> OutStream<Args...>::begin() {
+    return SqliteOutputIt<Args...>(*this);
+}
 
 #endif /* SQL_LIB_INT_H_7792 */

@@ -30,8 +30,7 @@ void DumpInterestingEqClasses(SqliteConnection &db,
 	SqliteTransaction trans(db);
 	auto out = db.BatchInsert<uintptr_t>(
 			"UPDATE EqClass SET interesting = 1 WHERE id == ?");
-	std::transform(eq_classes.begin(), eq_classes.end(),
-			SqliteOutputIt<uintptr_t>(*out),
+	std::transform(eq_classes.begin(), eq_classes.end(), out->begin(),
 			[] (EqClass *eq_class_ptr) {
 				return std::make_tuple(
 						reinterpret_cast<uintptr_t>(eq_class_ptr));
@@ -42,12 +41,11 @@ void DumpInterestingEqClasses(SqliteConnection &db,
 void DumpFuzzyDedupRes(SqliteConnection &db, FuzzyDedupRes const &res) {
 	SqliteTransaction trans(db);
 
-	auto eq_class_out = db.BatchInsert<uintptr_t, size_t, double>(
+	auto class_out = db.BatchInsert<uintptr_t, size_t, double>(
 			"INSERT INTO EqClass(id, nodes, weight, interesting) "
 			"VALUES(?, ?, ?, 0)");
 
-	std::transform(res.second->begin(), res.second->end(),
-			SqliteOutputIt<uintptr_t, size_t, double>(*eq_class_out),
+	std::transform(res.second->begin(), res.second->end(), class_out->begin(),
 			[] (EqClass const &eq_class) {
 				return std::make_tuple(
 					reinterpret_cast<uintptr_t>(&eq_class),
@@ -70,7 +68,7 @@ void DumpFuzzyDedupRes(SqliteConnection &db, FuzzyDedupRes const &res) {
 				reinterpret_cast<uintptr_t>(n),
 				n->GetName(),
 				n->BuildPath().native(),
-				std::string((n->GetType() == Node::FILE) ? "FILE" : "DIR"),
+				(n->GetType() == Node::FILE) ? "FILE" : "DIR",
 				n->unique_fraction,
 				reinterpret_cast<uintptr_t>(&n->GetEqClass())
 				);

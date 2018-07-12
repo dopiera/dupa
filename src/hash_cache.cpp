@@ -201,8 +201,7 @@ void hash_cache::store_cksums()
 	SqliteTransaction trans(db);
 	auto out = db.BatchInsert<std::string, cksum, off_t, time_t>(
 			"INSERT INTO Cache(path, cksum, size, mtime) VALUES(?, ?, ?, ?)");
-	std::transform(this->cache.begin(), this->cache.end(),
-			SqliteOutputIt<std::string, cksum, off_t, time_t>(*out),
+	std::transform(this->cache.begin(), this->cache.end(), out->begin(),
 			[] (const std::pair<std::string, file_info> &file) {
 				return std::make_tuple(
 						file.first,

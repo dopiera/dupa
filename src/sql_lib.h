@@ -112,6 +112,7 @@ template<typename... Args>
 class OutStream {
 public:
 	void Write(const Args&... args);
+	SqliteOutputIt<Args...> begin();
 private:
 	typedef detail::StmtPtr StmtPtr;
 
