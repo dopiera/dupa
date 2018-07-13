@@ -16,17 +16,17 @@ typedef boost::ptr_vector<EqClass> EqClasses;
 typedef std::shared_ptr<EqClasses> EqClassesPtr;
 typedef std::pair<std::shared_ptr<Node>, EqClassesPtr> FuzzyDedupRes;
 
-FuzzyDedupRes fuzzy_dedup(std::string const & start_dir);
-std::vector<EqClass*> GetInteresingEqClasses(FuzzyDedupRes &all);
+FuzzyDedupRes fuzzy_dedup(std::string const &start_dir);
+std::vector<EqClass *> GetInteresingEqClasses(FuzzyDedupRes &all);
 
 // This shouldn't be public but is for testing.
 namespace detail {
 
-typedef std::unordered_multimap<cksum, Node*> Sum2Node;
+typedef std::unordered_multimap<cksum, Node *> Sum2Node;
 
 // Recursively scan directory dir. Return the directory's hierarchy and a
 // multimap from checksums to Nodes in the hierarchy for all regular files.
-std::pair<Node*, Sum2Node> ScanDirectory(std::string const & dir);
+std::pair<Node *, Sum2Node> ScanDirectory(std::string const &dir);
 
 // Create an equivalence class and assign all empty directories to it.
 std::unique_ptr<EqClass> ClassifyEmptyDirs(Node &node);
@@ -37,13 +37,13 @@ EqClassesPtr ClassifyDuplicateFiles(Node &node, Sum2Node const &um_2_node);
 
 // Get all child nodes (possibly includeing the argument) for which
 // IsReadyToEvaluate() && !IsEvaluated()
-std::queue<Node*> GetNodesReadyToEval(Node &node);
+std::queue<Node *> GetNodesReadyToEval(Node &node);
 
 // Out of the list of "candidates" return the closest node to "ref" and the
 // distance between it and "ref". Iff "candidates" is empty, (NULL, 2) is
 // returned.
-std::pair<Node*, double> GetClosestNode(Node const &ref,
-		Nodes const &candidates);
+std::pair<Node *, double> GetClosestNode(Node const &ref,
+                                         Nodes const &candidates);
 
 // Assuming that all regular files and empty directories in the hierarchy
 // described by root_node are evaluated and nothing else, evaluate everything
@@ -54,7 +54,7 @@ void PropagateEquivalence(Node &root_node, EqClassesPtr eq_classes);
 void SortEqClasses(EqClassesPtr eq_classes);
 
 // Determine how unique directories are.
-CNodes CalculateUniqueness(Node & node);
+CNodes CalculateUniqueness(Node &node);
 
 } /* namespace detail */
 
