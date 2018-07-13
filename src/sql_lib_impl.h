@@ -47,7 +47,7 @@ template <> struct SqliteBind1<std::string> {
     if (mem == NULL)
       throw std::bad_alloc();
 
-    strcpy(mem, str.c_str());
+    strncpy(mem, str.c_str(), str.length() + 1);
     int res = sqlite3_bind_text(&s, idx, mem, str.length(), free);
     if (res != SQLITE_OK) {
       free(mem);

@@ -81,7 +81,8 @@ public:
 // 0 for identical, 1 for no overlap; (symmetrical diffrence) / (union)
 double NodeDistance(Node const &n1, Node const &n2);
 
-struct EqClass : private boost::noncopyable {
+class EqClass : private boost::noncopyable {
+public:
   EqClass() : nodes(), weight() {}
   bool IsEmpty() const { return nodes.empty(); }
   bool IsSingle() const { return nodes.size() == 1; }

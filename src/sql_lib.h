@@ -166,9 +166,8 @@ private:
 
   sqlite3 *db;
 
-  template <typename... Args> friend void InStream<Args...>::Fetch();
-  template <typename... Args>
-  friend void OutStream<Args...>::Write(const Args &...);
+  template <typename... Args> friend class InStream;
+  template <typename... Args> friend class OutStream;
 };
 
 #endif /* SQL_LIB_H_3341 */

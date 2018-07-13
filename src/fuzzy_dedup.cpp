@@ -186,19 +186,22 @@ std::queue<Node *> GetNodesReadyToEval(Node &node) {
 
 std::pair<Node *, double> GetClosestNode(Node const &ref,
                                          Nodes const &candidates) {
-  double min_dist = 2;
-  Node *min_elem = NULL;
-  for (Node *const candidate : candidates) {
-    assert(candidate != &ref);
-    assert(candidate->IsEvaluated());
-    double const distance = NodeDistance(ref, *candidate);
+  Nodes::const_iterator it = candidates.begin();
+  Nodes::const_iterator min_it = it++;
+  double min_dist = NodeDistance(ref, **min_it);
+
+  for (; it != candidates.end(); ++it) {
+    assert(*it != &ref);
+    assert((*it)->IsEvaluated());
+    double const distance = NodeDistance(ref, **it);
     assert(distance < 1.1); // actually <= 1, but it's double
+
     if (distance < min_dist) {
-      min_elem = candidate;
+      min_it = it;
       min_dist = distance;
     }
   }
-  return std::make_pair(min_elem, min_dist);
+  return std::make_pair(*min_it, min_dist);
 }
 
 //======== PropagateEquivalence ================================================
@@ -216,13 +219,17 @@ void PropagateEquivalence(Node &root_node, EqClassesPtr eq_classes) {
            !node->GetParent()->IsReadyToEvaluate());
 
     Nodes possible_equivalents = node->GetPossibleEquivalents();
-
-    std::pair<Node *, double> min_elem_and_dist =
-        detail::GetClosestNode(*node, possible_equivalents);
-
-    // FIXME make configurable
-    if (min_elem_and_dist.second < Conf().tolerable_diff_pct / 100.) {
-      min_elem_and_dist.first->GetEqClass().AddNode(*node);
+    if (!possible_equivalents.empty()) {
+      std::pair<Node *, double> min_elem_and_dist =
+          detail::GetClosestNode(*node, possible_equivalents);
+      assert(min_elem_and_dist.first);
+      if (min_elem_and_dist.second < Conf().tolerable_diff_pct / 100.) {
+        min_elem_and_dist.first->GetEqClass().AddNode(*node);
+      } else {
+        EqClass *eq_class = new EqClass;
+        eq_classes->push_back(eq_class);
+        eq_class->AddNode(*node);
+      }
     } else {
       EqClass *eq_class = new EqClass;
       eq_classes->push_back(eq_class);
