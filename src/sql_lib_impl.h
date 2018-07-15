@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <type_traits>
+#include <utility>
 
 #include <sqlite3.h>
 
@@ -134,22 +135,6 @@ std::tuple<ARGS...> Extract(sqlite3 &db, sqlite3_stmt &row) {
   return ExtractImpl<ARGS...>()(db, row, 0);
 }
 
-// Reimplement C++14 index_sequence_for
-
-template <size_t... I>
-struct IndexSequence {
-  using ValueType = size_t;
-  static constexpr size_t Size() { return sizeof...(I); }
-};
-
-template <std::size_t N, std::size_t... I>
-struct BuildIndexImpl : BuildIndexImpl<N - 1, N - 1, I...> {};
-template <std::size_t... I>
-struct BuildIndexImpl<0, I...> : IndexSequence<I...> {};
-
-template <class... TS>
-struct IndexSequenceFor : BuildIndexImpl<sizeof...(TS)> {};
-
 } /* namespace detail */
 
 //======== SqliteInputIt =======================================================
@@ -209,14 +194,14 @@ void SqliteInputIt<ARGS...>::Fetch() {
 template <typename... ARGS, size_t... I>
 inline void DispatchImpl(OutStream<ARGS...> &stream,
                          const std::tuple<ARGS...> &t,
-                         detail::IndexSequence<I...> /*unused*/) {
+                         std::index_sequence<I...> /*unused*/) {
   stream.Write(std::get<I>(t)...);
 }
 
 template <typename... ARGS>
 SqliteOutputIt<ARGS...> &SqliteOutputIt<ARGS...>::operator=(
     std::tuple<ARGS...> const &args) {
-  DispatchImpl(*this->stream_, args, detail::IndexSequenceFor<ARGS...>());
+  DispatchImpl(*this->stream_, args, std::index_sequence_for<ARGS...>());
   return *this;
 }
 
