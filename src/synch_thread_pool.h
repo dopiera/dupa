@@ -1,5 +1,5 @@
-#ifndef SYNCH_THREAD_POOL_991234
-#define SYNCH_THREAD_POOL_991234
+#ifndef SRC_SYNCH_THREAD_POOL_H_
+#define SRC_SYNCH_THREAD_POOL_H_
 
 #include <condition_variable>
 #include <functional>
@@ -44,4 +44,4 @@ private:
   std::vector<std::unique_ptr<std::thread>> threads;
 };
 
-#endif /* SYNCH_THREAD_POOL_991234 */
+#endif // SRC_SYNCH_THREAD_POOL_H_

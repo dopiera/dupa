@@ -1,5 +1,5 @@
-#ifndef FILE_TREE_H_4234
-#define FILE_TREE_H_4234
+#ifndef SRC_FILE_TREE_H_
+#define SRC_FILE_TREE_H_
 
 #include <cassert>
 #include <functional>
@@ -101,4 +101,4 @@ void PrintEqClassses(std::vector<EqClass *> const &eq_classes);
 // duplicated to file outside of it.
 void PrintScatteredDirectories(Node const &root);
 
-#endif /* FILE_TREE_H_4234 */
+#endif // SRC_FILE_TREE_H_

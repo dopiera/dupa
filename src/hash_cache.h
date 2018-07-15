@@ -1,5 +1,5 @@
-#ifndef HASH_CACHE_H_6332
-#define HASH_CACHE_H_6332
+#ifndef SRC_HASH_CACHE_H_
+#define SRC_HASH_CACHE_H_
 
 #include <cstdint>
 
@@ -55,4 +55,4 @@ private:
   std::mutex mutex;
 };
 
-#endif /* HASH_CACHE_H_6332 */
+#endif // SRC_HASH_CACHE_H_

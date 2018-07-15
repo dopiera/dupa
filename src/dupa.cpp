@@ -112,7 +112,7 @@ void dir_compare(fs::path const &dir1, fs::path const &dir2) {
         // std::cout << "NOT_CHANGED: " << p1 << std::endl;
       } else {
         paths ps = get_paths_for_hash(hashes1h, h2);
-        if (not ps.empty()) {
+        if (!ps.empty()) {
           // rename from somewhere:
           std::cout << "OVERWRITTEN_BY: " << p1 << " CANDIDATES: " << ps
                     << std::endl;
@@ -122,7 +122,7 @@ void dir_compare(fs::path const &dir1, fs::path const &dir2) {
       }
     } else {
       paths ps = get_paths_for_hash(hashes2h, h1);
-      if (not ps.empty()) {
+      if (!ps.empty()) {
         if (!Conf().skip_renames) {
           std::cout << "RENAME: " << p1 << " -> " << ps << std::endl;
         }
@@ -140,7 +140,7 @@ void dir_compare(fs::path const &dir1, fs::path const &dir2) {
       continue;
     }
     paths ps = get_paths_for_hash(hashes1h, h2);
-    if (not ps.empty()) {
+    if (!ps.empty()) {
       paths ps2;
       for (auto const &copy_candidate : ps) {
         if (hashes2p.find(copy_candidate) != hashes2p.end()) {
@@ -149,7 +149,7 @@ void dir_compare(fs::path const &dir1, fs::path const &dir2) {
         // otherwise it's probably renamed from that file, so it's
         // already mentioned
       }
-      if (not ps2.empty()) {
+      if (!ps2.empty()) {
         std::cout << "COPIED_FROM: " << p2 << " CANDIDATES: " << ps2
                   << std::endl;
       }

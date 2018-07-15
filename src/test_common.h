@@ -1,5 +1,5 @@
-#ifndef TEST_COMMON_1341
-#define TEST_COMMON_1341
+#ifndef SRC_TEST_COMMON_H_
+#define SRC_TEST_COMMON_H_
 
 #include <boost/filesystem/path.hpp>
 #include <iostream>
@@ -14,4 +14,4 @@ void PrintTo(path const &p, std::ostream *os);
 } /* namespace filesystem */
 } /* namespace boost */
 
-#endif /* TEST_COMMON_1341 */
+#endif // SRC_TEST_COMMON_H_

@@ -1,5 +1,5 @@
-#ifndef SQL_LIB_IMPL_H_7792
-#define SQL_LIB_IMPL_H_7792
+#ifndef SRC_SQL_LIB_IMPL_H_
+#define SRC_SQL_LIB_IMPL_H_
 
 #include <cstdint>
 #include <cstring>
@@ -305,4 +305,4 @@ SqliteOutputIt<Args...> OutStream<Args...>::begin() {
   return SqliteOutputIt<Args...>(*this);
 }
 
-#endif /* SQL_LIB_INT_H_7792 */
+#endif // SRC_SQL_LIB_IMPL_H_

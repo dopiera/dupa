@@ -1,5 +1,5 @@
-#ifndef SCANNER_H_6513
-#define SCANNER_H_6513
+#ifndef SRC_SCANNER_H_
+#define SRC_SCANNER_H_
 
 #include <cstdint>
 
@@ -32,4 +32,4 @@ template <class DirHandle>
 void ScanDirectoryOrDb(std::string const &path,
                        ScanProcessor<DirHandle> &processor);
 
-#endif /* SCANNER_H_6513 */
+#endif // SRC_SCANNER_H_

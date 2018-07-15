@@ -1,5 +1,5 @@
-#ifndef FUZZY_DEDUP_H_7234
-#define FUZZY_DEDUP_H_7234
+#ifndef SRC_FUZZY_DEDUP_H_
+#define SRC_FUZZY_DEDUP_H_
 
 #include <memory>
 #include <queue>
@@ -58,4 +58,4 @@ CNodes CalculateUniqueness(Node &node);
 
 } /* namespace detail */
 
-#endif /* FUZZY_DEDUP_H_7234 */
+#endif // SRC_FUZZY_DEDUP_H_

@@ -106,7 +106,8 @@ void Node::Traverse(const std::function<void(Node const *)> &callback) const {
 bool Node::IsAncestorOf(Node const &node) {
   Node const *n = &node;
   for (; n && n != this; n = n->parent) {
-    ;
+    {
+    }
   }
   return n != nullptr;
 }
@@ -138,7 +139,7 @@ double NodeDistance(Node const &n1, Node const &n2) {
 
   for (auto const &eq_class_and_intersect : eq_classes1) {
     sum += eq_class_and_intersect.first->weight;
-    if (not eq_class_and_intersect.second) {
+    if (!eq_class_and_intersect.second) {
       // only in n1
       sym_diff += eq_class_and_intersect.first->weight;
     }
@@ -152,7 +153,7 @@ double NodeDistance(Node const &n1, Node const &n2) {
     return 0;
   }
   assert(sum >= sym_diff);
-  return double(sym_diff) / sum;
+  return static_cast<double>(sym_diff) / sum;
 }
 
 void EqClass::AddNode(Node &node) {

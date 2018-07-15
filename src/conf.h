@@ -1,5 +1,5 @@
-#ifndef CONF_H_112954
-#define CONF_H_112954
+#ifndef SRC_CONF_H_
+#define SRC_CONF_H_
 
 #include <string>
 #include <vector>
@@ -22,4 +22,4 @@ void ParseArgv(int argc, const char *const argv[]);
 void InitTestConf();
 GlobalConfig const &Conf();
 
-#endif /* CONF_H_112954 */
+#endif // SRC_CONF_H_

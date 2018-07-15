@@ -1,5 +1,5 @@
-#ifndef DB_OUTPUT_H_12662
-#define DB_OUTPUT_H_12662
+#ifndef SRC_DB_OUTPUT_H_
+#define SRC_DB_OUTPUT_H_
 
 #include <exception>
 #include <memory>
@@ -13,4 +13,4 @@ void DumpFuzzyDedupRes(SqliteConnection &db, FuzzyDedupRes const &res);
 void DumpInterestingEqClasses(SqliteConnection &db,
                               std::vector<EqClass *> const &eq_classes);
 
-#endif /* DB_OUTPUT_H_12662 */
+#endif // SRC_DB_OUTPUT_H_

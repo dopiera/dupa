@@ -1,5 +1,5 @@
-#ifndef LOG_H_64352
-#define LOG_H_64352
+#ifndef SRC_LOG_H_
+#define SRC_LOG_H_
 
 #include <cassert>
 #include <iostream>
@@ -30,4 +30,4 @@ extern LogLevel stderr_loglevel;
   } while (0)
 #endif /* NDEBUG */
 
-#endif /* LOG_H_64352 */
+#endif // SRC_LOG_H_

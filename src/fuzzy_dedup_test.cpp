@@ -56,7 +56,6 @@ public:
 
   Node *AddFile(std::string const &eq_class, std::string const &native,
                 off_t size) {
-
     path bpath(native);
     Node *parent = AddDir(bpath.parent_path().native());
     Node *new_node = new Node(Node::FILE, bpath.filename().native(), size);

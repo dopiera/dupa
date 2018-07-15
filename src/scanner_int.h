@@ -1,5 +1,5 @@
-#ifndef SCANNER_INT_H_2340
-#define SCANNER_INT_H_2340
+#ifndef SRC_SCANNER_INT_H_
+#define SRC_SCANNER_INT_H_
 
 #include "scanner.h"
 
@@ -132,4 +132,4 @@ void ScanDirectoryOrDb(std::string const &path,
   }
 }
 
-#endif /* SCANNER_INT_H_2340 */
+#endif // SRC_SCANNER_INT_H_

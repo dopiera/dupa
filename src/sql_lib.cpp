@@ -46,7 +46,9 @@ SqliteConnection::SqliteConnection(std::string const &path, int flags) {
   const char sql[] = "PRAGMA page_size = 65536; "
                      "PRAGMA synchronous = 0; "
                      "PRAGMA journal_mode = OFF;"
-                     "PRAGMA foreign_keys = 1;"; // one can never be too sure
+                     // Sqlite3 doesn't enforce them by default, but we will so
+                     // that we find bugs.
+                     "PRAGMA foreign_keys = 1;";
   char *err_msg_raw;
   res = sqlite3_exec(this->db, sql, nullptr, nullptr, &err_msg_raw);
   if (res != SQLITE_OK) {

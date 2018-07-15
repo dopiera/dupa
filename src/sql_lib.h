@@ -1,5 +1,5 @@
-#ifndef SQL_LIB_H_3341
-#define SQL_LIB_H_3341
+#ifndef SRC_SQL_LIB_H_
+#define SRC_SQL_LIB_H_
 
 #include <cassert>
 #include <exception>
@@ -43,7 +43,6 @@ class SqliteInputIt
     : public std::iterator<std::input_iterator_tag, std::tuple<Args...>,
                            ptrdiff_t, const std::tuple<Args...> *,
                            const std::tuple<Args...> &> {
-
 public:
   SqliteInputIt() : stream(nullptr) {}
   explicit SqliteInputIt(InStream<Args...> &s) : stream(&s) { Fetch(); }
@@ -175,4 +174,4 @@ private:
   template <typename... Args> friend class OutStream;
 };
 
-#endif /* SQL_LIB_H_3341 */
+#endif // SRC_SQL_LIB_H_

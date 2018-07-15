@@ -119,7 +119,6 @@ std::pair<Node *, Sum2Node> ScanDirectory(std::string const &dir) {
 namespace {
 
 struct EmptyDirsEqClassFill {
-
   EmptyDirsEqClassFill() : eq_class(new EqClass) {}
 
   void OnNode(Node *node) {

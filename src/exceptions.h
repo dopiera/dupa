@@ -1,5 +1,5 @@
-#ifndef EXCEPTIONS_H_7543
-#define EXCEPTIONS_H_7543
+#ifndef SRC_EXCEPTIONS_H_
+#define SRC_EXCEPTIONS_H_
 
 #include <exception>
 #include <string>
@@ -16,4 +16,4 @@ private:
   std::string msg;
 };
 
-#endif /* EXCEPTIONS_H_7543 */
+#endif // SRC_EXCEPTIONS_H_
