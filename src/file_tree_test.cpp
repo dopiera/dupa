@@ -4,8 +4,6 @@
 #include <memory>
 #include <utility>
 
-#include <boost/ptr_container/ptr_vector.hpp>
-
 #include "test_common.h"
 #include "gtest/gtest.h"
 
@@ -13,7 +11,7 @@ void PrintTo(Node const *n, std::ostream *os) {
   boost::filesystem::PrintTo(n->BuildPath(), os);
 }
 
-using EqClasses = boost::ptr_vector<EqClass>;
+using EqClasses = std::vector<std::unique_ptr<EqClass>>;
 using EqClassesPtr = std::shared_ptr<EqClasses>;
 using NodeAndClasses = std::pair<Node *, EqClassesPtr>;
 static NodeAndClasses CreateNodeWithWeight(int weight) {
@@ -22,9 +20,8 @@ static NodeAndClasses CreateNodeWithWeight(int weight) {
   for (int i = 0; i < weight; ++i) {
     Node *n_child = new Node(Node::FILE, "xyz");
     n->AddChild(n_child);
-    auto *eq_class = new EqClass;
-    eq_classes->push_back(eq_class);
-    eq_class->AddNode(*n_child);
+    eq_classes->push_back(std::make_unique<EqClass>());
+    eq_classes->back()->AddNode(*n_child);
   }
   return make_pair(n, eq_classes);
 }

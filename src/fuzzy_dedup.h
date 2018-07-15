@@ -7,12 +7,10 @@
 
 #include <unordered_map>
 
-#include <boost/ptr_container/ptr_vector.hpp>
-
 #include "file_tree.h"
 #include "hash_cache.h" // for cksum
 
-using EqClasses = boost::ptr_vector<EqClass>;
+using EqClasses = std::vector<std::unique_ptr<EqClass>>;
 using EqClassesPtr = std::shared_ptr<EqClasses>;
 using FuzzyDedupRes = std::pair<std::shared_ptr<Node>, EqClassesPtr>;
 

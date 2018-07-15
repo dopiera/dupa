@@ -3,20 +3,8 @@
 #include <memory>
 
 #include <boost/filesystem/path.hpp>
-#include <boost/ptr_container/ptr_map.hpp>
-#include <boost/ptr_container/ptr_vector.hpp>
 
 #include "gtest/gtest.h"
-
-namespace boost {
-namespace filesystem {
-
-// Make boost::filesystem::path printable so that assertions have meaningful
-// text.
-void PrintTo(path const &p, std::ostream *os) { (*os) << p.native(); }
-
-} /* namespace filesystem */
-} /* namespace boost */
 
 using boost::filesystem::path;
 
@@ -76,7 +64,7 @@ public:
       std::unique_ptr<EqClass> empty_dirs_class =
           detail::ClassifyEmptyDirs(*root_node_);
       if (!empty_dirs_class->IsEmpty()) {
-        eq_classes->push_back(empty_dirs_class.release());
+        eq_classes->push_back(std::move(empty_dirs_class));
       }
     }
     detail::PropagateEquivalence(*root_node_, eq_classes);

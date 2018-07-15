@@ -35,7 +35,7 @@ FuzzyDedupRes fuzzy_dedup(std::string const &dir) {
     std::unique_ptr<EqClass> empty_dirs_class =
         detail::ClassifyEmptyDirs(*root_node);
     if (!empty_dirs_class->IsEmpty()) {
-      eq_classes->push_back(empty_dirs_class.release());
+      eq_classes->push_back(std::move(empty_dirs_class));
     }
   }
 
@@ -55,13 +55,13 @@ FuzzyDedupRes fuzzy_dedup(std::string const &dir) {
 
 std::vector<EqClass *> GetInteresingEqClasses(FuzzyDedupRes &all) {
   std::vector<EqClass *> res;
-  for (EqClass &eq_class : *all.second) {
-    assert(!eq_class.nodes.empty());
-    if (eq_class.nodes.size() == 1) {
+  for (auto &eq_class : *all.second) {
+    assert(!eq_class->nodes.empty());
+    if (eq_class->nodes.size() == 1) {
       continue;
     }
     bool all_parents_are_dups = true;
-    for (Node *node : eq_class.nodes) {
+    for (Node *node : eq_class->nodes) {
       if (node->GetParent() == nullptr ||
           node->GetParent()->GetEqClass().IsSingle()) {
         all_parents_are_dups = false;
@@ -70,7 +70,7 @@ std::vector<EqClass *> GetInteresingEqClasses(FuzzyDedupRes &all) {
     if (all_parents_are_dups) {
       continue;
     }
-    res.push_back(&eq_class);
+    res.push_back(eq_class.get());
   }
   return res;
 }
@@ -151,10 +151,9 @@ EqClassesPtr ClassifyDuplicateFiles(Node & /*node*/,
     // I am traversing the map twice, but it's so much more readable...
 
     if (range_start != range_end) {
-      auto *eq_class = new EqClass;
-      res->push_back(eq_class);
+      res->push_back(std::make_unique<EqClass>());
       for (; range_start != range_end; ++range_start) {
-        eq_class->AddNode(*range_start->second);
+        res->back()->AddNode(*range_start->second);
       }
     }
   }
@@ -227,14 +226,12 @@ void PropagateEquivalence(Node &root_node, const EqClassesPtr &eq_classes) {
       if (min_elem_and_dist.second < Conf().tolerable_diff_pct / 100.) {
         min_elem_and_dist.first->GetEqClass().AddNode(*node);
       } else {
-        auto *eq_class = new EqClass;
-        eq_classes->push_back(eq_class);
-        eq_class->AddNode(*node);
+        eq_classes->push_back(std::make_unique<EqClass>());
+        eq_classes->back()->AddNode(*node);
       }
     } else {
-      auto *eq_class = new EqClass;
-      eq_classes->push_back(eq_class);
-      eq_class->AddNode(*node);
+      eq_classes->push_back(std::make_unique<EqClass>());
+      eq_classes->back()->AddNode(*node);
     }
 
     // By modifying this node we could have made the parent ready to
@@ -251,18 +248,12 @@ void PropagateEquivalence(Node &root_node, const EqClassesPtr &eq_classes) {
 
 //======== SortEqClasses =======================================================
 
-namespace {
-
-struct EqClassWeightCmp : public std::binary_function<EqClass, EqClass, bool> {
-  bool operator()(const EqClass &a, const EqClass &b) const {
-    return a.weight > b.weight;
-  }
-};
-
-} /* anonymous namespace */
-
 void SortEqClasses(const EqClassesPtr &eq_classes) {
-  eq_classes->sort(EqClassWeightCmp());
+  std::sort(
+      eq_classes->begin(), eq_classes->end(),
+      [](const std::unique_ptr<EqClass> &a, const std::unique_ptr<EqClass> &b) {
+        return a->weight > b->weight;
+      });
 }
 
 //======== CalculateUniqueness =================================================

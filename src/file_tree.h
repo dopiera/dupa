@@ -7,7 +7,6 @@
 #include <vector>
 
 #include <boost/filesystem/path.hpp>
-#include <boost/noncopyable.hpp>
 
 #include "log.h"
 
@@ -19,7 +18,7 @@ using CNodes = std::vector<const Node *>;
 
 // FIXME: the tree structure should be separated from the things computed on it.
 // The only reason why it is not is my laziness.
-class Node : private boost::noncopyable {
+class Node {
 public:
   enum Type {
     DIR,
@@ -34,6 +33,8 @@ public:
     DLOG("Created file: '" << this->BuildPath().native() << "' with size "
                            << this->size << " and type " << this->type);
   }
+  Node(const Node &n) = delete;
+  Node &operator=(const Node &n) = delete;
 
   void AddChild(Node *child); // takes ownership
   bool IsReadyToEvaluate() const { return not_evaluated_children == 0; }
@@ -81,8 +82,12 @@ public:
 // 0 for identical, 1 for no overlap; (symmetrical diffrence) / (union)
 double NodeDistance(Node const &n1, Node const &n2);
 
-class EqClass : private boost::noncopyable {
+class EqClass {
 public:
+  EqClass() = default;
+  EqClass(const EqClass &) = delete;
+  EqClass &operator=(const EqClass &) = delete;
+
   bool IsEmpty() const { return nodes.empty(); }
   bool IsSingle() const { return nodes.size() == 1; }
   double GetWeight() const { return this->weight; }

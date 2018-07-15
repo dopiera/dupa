@@ -45,10 +45,10 @@ void DumpFuzzyDedupRes(SqliteConnection &db, FuzzyDedupRes const &res) {
       "VALUES(?, ?, ?, 0)");
 
   std::transform(res.second->begin(), res.second->end(), class_out->begin(),
-                 [](EqClass const &eq_class) {
+                 [](std::unique_ptr<EqClass> const &eq_class) {
                    return std::make_tuple(
-                       reinterpret_cast<uintptr_t>(&eq_class),
-                       eq_class.GetNumNodes(), eq_class.GetWeight());
+                       reinterpret_cast<uintptr_t>(eq_class.get()),
+                       eq_class->GetNumNodes(), eq_class->GetWeight());
                  });
 
   auto node_out = db.BatchInsert<uintptr_t, std::string, std::string,

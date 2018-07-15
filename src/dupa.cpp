@@ -22,7 +22,7 @@
 namespace fs = boost::filesystem;
 namespace mi = boost::multi_index;
 
-BOOST_STATIC_ASSERT(sizeof(off_t) == 8);
+static_assert(sizeof(off_t) == 8);
 
 struct path_hash {
   path_hash(std::string path, cksum hash) : path(std::move(path)), hash(hash) {}
