@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <tuple>
+#include <utility>
 
 #include <sqlite3.h>
 
@@ -20,17 +21,17 @@ struct SqliteFinalizer : public std::unary_function<sqlite3_stmt *, void> {
   void operator()(sqlite3_stmt *p) const { sqlite3_finalize(p); }
 };
 
-typedef std::unique_ptr<sqlite3_stmt, SqliteFinalizer> StmtPtr;
+using StmtPtr = std::unique_ptr<sqlite3_stmt, SqliteFinalizer>;
 
 } /* namespace detail */
 
 struct sqlite_exception : std::exception {
   sqlite_exception(int sqlite_code, std::string const &operation);
   sqlite_exception(sqlite3 *db, std::string const &operation);
-  sqlite_exception(std::string const &reason);
-  ~sqlite_exception() throw();
-  virtual char const *what() const throw();
-  int code() const throw();
+  explicit sqlite_exception(std::string reason);
+  ~sqlite_exception() noexcept override;
+  char const *what() const noexcept override;
+  int code() const noexcept;
 
 private:
   std::string reason;
@@ -82,12 +83,13 @@ public:
   SqliteInputIt<Args...> begin();
   SqliteInputIt<Args...> end();
 
-private:
-  typedef detail::StmtPtr StmtPtr;
-
-  InStream(SqliteConnection &conn, StmtPtr &&stmt);
   InStream(const InStream &) = delete;
   InStream &operator=(const InStream &) = delete;
+
+private:
+  using StmtPtr = detail::StmtPtr;
+
+  InStream(SqliteConnection &conn, StmtPtr &&stmt);
   void Fetch();
 
   SqliteConnection &conn;
@@ -103,12 +105,13 @@ public:
   void Write(const Args &... args);
   SqliteOutputIt<Args...> begin();
 
-private:
-  typedef detail::StmtPtr StmtPtr;
-
-  OutStream(SqliteConnection &conn, StmtPtr &&stmt);
   OutStream(const OutStream &) = delete;
   OutStream &operator=(const OutStream &) = delete;
+
+private:
+  using StmtPtr = detail::StmtPtr;
+
+  OutStream(SqliteConnection &conn, StmtPtr &&stmt);
 
   SqliteConnection &conn;
   StmtPtr stmt;
@@ -122,13 +125,14 @@ template <typename... Args> class InStreamHolder {
   // This is going to get even better with structured binding in C++ 17:
   // for (const auto &[a, b] : conn.Query<int, std::string>("SELECT a, b..."))
 public:
-  InStreamHolder(std::shared_ptr<InStream<Args...>> impl) : impl(impl) {}
+  explicit InStreamHolder(std::shared_ptr<InStream<Args...>> impl)
+      : impl(std::move(std::move(impl))) {}
   InStreamHolder(const InStreamHolder<Args...> &o) : impl(o.impl) {}
   std::tuple<Args...> Read() { return this->impl->Read(); }
   bool Eof() const { return this->impl->Eof(); }
   SqliteInputIt<Args...> begin() { return this->impl->begin(); }
   SqliteInputIt<Args...> end() { return this->impl->end(); }
-  InStreamHolder<Args...> operator=(const InStreamHolder &o) {
+  InStreamHolder<Args...> &operator=(const InStreamHolder &o) {
     this->impl = o.impl;
   }
 
@@ -150,8 +154,9 @@ private:
 
 class SqliteConnection {
 public:
-  SqliteConnection(std::string const &path,
-                   int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE);
+  explicit SqliteConnection(std::string const &path,
+                            int flags = SQLITE_OPEN_READWRITE |
+                                        SQLITE_OPEN_CREATE);
   ~SqliteConnection();
   template <typename... Args>
   InStreamHolder<Args...> Query(const std::string &sql);
@@ -160,7 +165,7 @@ public:
   void SqliteExec(const std::string &sql);
 
 private:
-  typedef detail::StmtPtr StmtPtr;
+  using StmtPtr = detail::StmtPtr;
 
   StmtPtr PrepareStmt(std::string const &sql);
 

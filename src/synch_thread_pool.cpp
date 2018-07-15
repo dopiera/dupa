@@ -1,11 +1,13 @@
 #include "synch_thread_pool.h"
 
+#include <memory>
+
 SyncThreadPool::SyncThreadPool(int concurrency)
     : closing(false), outstanding(0) {
   assert(concurrency > 0);
   for (int i = 0; i < concurrency; ++i) {
-    this->threads.emplace_back(std::unique_ptr<std::thread>(
-        new std::thread(std::bind(&SyncThreadPool::ThreadLoop, this))));
+    this->threads.emplace_back(std::make_unique<std::thread>(
+        std::bind(&SyncThreadPool::ThreadLoop, this)));
   }
 }
 

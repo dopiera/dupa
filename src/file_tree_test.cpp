@@ -13,16 +13,16 @@ void PrintTo(Node const *n, std::ostream *os) {
   boost::filesystem::PrintTo(n->BuildPath(), os);
 }
 
-typedef boost::ptr_vector<EqClass> EqClasses;
-typedef std::shared_ptr<EqClasses> EqClassesPtr;
-typedef std::pair<Node *, EqClassesPtr> NodeAndClasses;
+using EqClasses = boost::ptr_vector<EqClass>;
+using EqClassesPtr = std::shared_ptr<EqClasses>;
+using NodeAndClasses = std::pair<Node *, EqClassesPtr>;
 static NodeAndClasses CreateNodeWithWeight(int weight) {
   EqClassesPtr eq_classes(new EqClasses);
   Node *n = new Node(Node::DIR, "dsa");
   for (int i = 0; i < weight; ++i) {
     Node *n_child = new Node(Node::FILE, "xyz");
     n->AddChild(n_child);
-    EqClass *eq_class = new EqClass;
+    auto *eq_class = new EqClass;
     eq_classes->push_back(eq_class);
     eq_class->AddNode(*n_child);
   }

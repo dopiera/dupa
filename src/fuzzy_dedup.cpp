@@ -56,19 +56,20 @@ FuzzyDedupRes fuzzy_dedup(std::string const &dir) {
 std::vector<EqClass *> GetInteresingEqClasses(FuzzyDedupRes &all) {
   std::vector<EqClass *> res;
   for (EqClass &eq_class : *all.second) {
-    assert(eq_class.nodes.size() > 0);
+    assert(!eq_class.nodes.empty());
     if (eq_class.nodes.size() == 1) {
       continue;
     }
     bool all_parents_are_dups = true;
     for (Node *node : eq_class.nodes) {
-      if (node->GetParent() == NULL ||
+      if (node->GetParent() == nullptr ||
           node->GetParent()->GetEqClass().IsSingle()) {
         all_parents_are_dups = false;
       }
     }
-    if (all_parents_are_dups)
+    if (all_parents_are_dups) {
       continue;
+    }
     res.push_back(&eq_class);
   }
   return res;
@@ -79,19 +80,19 @@ namespace detail {
 //======== ScanDirectory =======================================================
 
 struct TreeCtorProcessor : public ScanProcessor<Node *> {
-  virtual void File(boost::filesystem::path const &path, Node *const &parent,
-                    file_info const &f_info) {
+  void File(boost::filesystem::path const &path, Node *const &parent,
+            file_info const &f_info) override {
     Node *node = new Node(Node::FILE, path.filename().native(), f_info.size);
     parent->AddChild(node);
     sum2node_.insert(std::make_pair(f_info.sum, node));
   }
 
-  virtual Node *RootDir(boost::filesystem::path const &path) {
-    root_.reset(new Node(Node::DIR, path.native()));
+  Node *RootDir(boost::filesystem::path const &path) override {
+    root_ = std::make_unique<Node>(Node::DIR, path.native());
     return root_.get();
   }
 
-  virtual Node *Dir(boost::filesystem::path const &path, Node *const &parent) {
+  Node *Dir(boost::filesystem::path const &path, Node *const &parent) override {
     Node *node = new Node(Node::DIR, path.filename().native());
     parent->AddChild(node);
     return node;
@@ -141,16 +142,17 @@ std::unique_ptr<EqClass> ClassifyEmptyDirs(Node &node) {
 
 //======== ClassifyDuplicateFiles ==============================================
 
-EqClassesPtr ClassifyDuplicateFiles(Node &node, Sum2Node const &sum_2_node) {
+EqClassesPtr ClassifyDuplicateFiles(Node & /*node*/,
+                                    Sum2Node const &sum_2_node) {
   EqClassesPtr res(new EqClasses);
-  for (Sum2Node::const_iterator range_start = sum_2_node.begin();
+  for (auto range_start = sum_2_node.begin();
        range_start != sum_2_node.end();) {
     Sum2Node::const_iterator const range_end =
         sum_2_node.equal_range(range_start->first).second;
     // I am traversing the map twice, but it's so much more readable...
 
     if (range_start != range_end) {
-      EqClass *eq_class = new EqClass;
+      auto *eq_class = new EqClass;
       res->push_back(eq_class);
       for (; range_start != range_end; ++range_start) {
         eq_class->AddNode(*range_start->second);
@@ -186,8 +188,8 @@ std::queue<Node *> GetNodesReadyToEval(Node &node) {
 
 std::pair<Node *, double> GetClosestNode(Node const &ref,
                                          Nodes const &candidates) {
-  Nodes::const_iterator it = candidates.begin();
-  Nodes::const_iterator min_it = it++;
+  auto it = candidates.begin();
+  auto min_it = it++;
   double min_dist = NodeDistance(ref, **min_it);
 
   for (; it != candidates.end(); ++it) {
@@ -206,7 +208,7 @@ std::pair<Node *, double> GetClosestNode(Node const &ref,
 
 //======== PropagateEquivalence ================================================
 
-void PropagateEquivalence(Node &root_node, EqClassesPtr eq_classes) {
+void PropagateEquivalence(Node &root_node, const EqClassesPtr &eq_classes) {
   std::queue<Node *> ready_to_eval = detail::GetNodesReadyToEval(root_node);
 
   while (!ready_to_eval.empty()) {
@@ -215,7 +217,7 @@ void PropagateEquivalence(Node &root_node, EqClassesPtr eq_classes) {
 
     assert(node->IsReadyToEvaluate());
     assert(!node->IsEvaluated());
-    assert(node->GetParent() == NULL ||
+    assert(node->GetParent() == nullptr ||
            !node->GetParent()->IsReadyToEvaluate());
 
     Nodes possible_equivalents = node->GetPossibleEquivalents();
@@ -226,12 +228,12 @@ void PropagateEquivalence(Node &root_node, EqClassesPtr eq_classes) {
       if (min_elem_and_dist.second < Conf().tolerable_diff_pct / 100.) {
         min_elem_and_dist.first->GetEqClass().AddNode(*node);
       } else {
-        EqClass *eq_class = new EqClass;
+        auto *eq_class = new EqClass;
         eq_classes->push_back(eq_class);
         eq_class->AddNode(*node);
       }
     } else {
-      EqClass *eq_class = new EqClass;
+      auto *eq_class = new EqClass;
       eq_classes->push_back(eq_class);
       eq_class->AddNode(*node);
     }
@@ -240,7 +242,8 @@ void PropagateEquivalence(Node &root_node, EqClassesPtr eq_classes) {
     // evaluate. It is clear it couldn't have been ready at the beginning of
     // this function because this element was not evaluated, so there is no
     // risk we're adding it to the queue twice.
-    if (node->GetParent() != NULL && node->GetParent()->IsReadyToEvaluate()) {
+    if (node->GetParent() != nullptr &&
+        node->GetParent()->IsReadyToEvaluate()) {
       ready_to_eval.push(node->GetParent());
     }
   }
@@ -259,7 +262,7 @@ struct EqClassWeightCmp : public std::binary_function<EqClass, EqClass, bool> {
 
 } /* anonymous namespace */
 
-void SortEqClasses(EqClassesPtr eq_classes) {
+void SortEqClasses(const EqClassesPtr &eq_classes) {
   eq_classes->sort(EqClassWeightCmp());
 }
 
@@ -272,8 +275,9 @@ bool HasDuplicateElsewhere(Node const &n,
   // FIXME: perhaps it's worth sorting nodes in EqClasses and doing a binary
   // search here. I'll not do premature optimizations, though.
   for (Node *sibling : n.GetEqClass().nodes) {
-    if (not_here.find(sibling) == not_here.end())
+    if (not_here.find(sibling) == not_here.end()) {
       return true;
+    }
   }
   return false;
 }
@@ -297,8 +301,9 @@ CNodes CalculateUniqueness(Node &node) {
     double unique_weight = 0;
     for (Node const *desc : descendant_nodes) {
       total_weight += desc->GetWeight();
-      if (!HasDuplicateElsewhere(*desc, descendant_nodes))
+      if (!HasDuplicateElsewhere(*desc, descendant_nodes)) {
         unique_weight += desc->GetWeight();
+      }
     }
     node.unique_fraction = (total_weight == 0)
                                ? 0 // empty directory is not unique

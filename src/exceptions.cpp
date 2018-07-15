@@ -1,6 +1,6 @@
 #include "exceptions.h"
 
-#include <string.h>
+#include <cstring>
 
 #include <string>
 

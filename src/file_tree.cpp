@@ -1,6 +1,6 @@
 #include "file_tree.h"
 
-#include <stdint.h>
+#include <cstdint>
 
 #include <algorithm>
 #include <cassert>
@@ -13,7 +13,7 @@
 
 void Node::AddChild(Node *child) {
   assert(!IsEvaluated());
-  assert(child->parent == NULL);
+  assert(child->parent == nullptr);
   assert(!child->IsEvaluated()); // This is due to not_evaluated_children
   assert(type == DIR);
   child->parent = this;
@@ -44,10 +44,11 @@ double Node::GetWeight() const {
 
   switch (type) {
   case FILE:
-    if (Conf().use_size)
+    if (Conf().use_size) {
       return this->size;
-    else
+    } else {
       return 1;
+    }
   case DIR: {
     std::unordered_set<EqClass *> eq_classes;
     double weight = 0;
@@ -68,9 +69,8 @@ double Node::GetWeight() const {
 boost::filesystem::path Node::BuildPath() const {
   if (parent) {
     return parent->BuildPath() /= boost::filesystem::path(name);
-  } else {
-    return boost::filesystem::path(name);
   }
+  return boost::filesystem::path(name);
 }
 
 Nodes Node::GetPossibleEquivalents() const {
@@ -89,14 +89,14 @@ Nodes Node::GetPossibleEquivalents() const {
   return Nodes(nodes.begin(), nodes.end());
 }
 
-void Node::Traverse(std::function<void(Node *)> callback) {
+void Node::Traverse(const std::function<void(Node *)> &callback) {
   for (Node *const child : this->children) {
     child->Traverse(callback);
   }
   callback(this);
 }
 
-void Node::Traverse(std::function<void(Node const *)> callback) const {
+void Node::Traverse(const std::function<void(Node const *)> &callback) const {
   for (Node const *const child : this->children) {
     child->Traverse(callback);
   }
@@ -105,8 +105,9 @@ void Node::Traverse(std::function<void(Node const *)> callback) const {
 
 bool Node::IsAncestorOf(Node const &node) {
   Node const *n = &node;
-  for (; n && n != this; n = n->parent)
+  for (; n && n != this; n = n->parent) {
     ;
+  }
   return n != nullptr;
 }
 
@@ -124,8 +125,7 @@ double NodeDistance(Node const &n1, Node const &n2) {
     eq_classes1.insert(std::make_pair(n->eq_class, false));
   }
   for (Node const *const n : n2.children) {
-    std::unordered_map<EqClass *, bool>::iterator in1_it =
-        eq_classes1.find(n->eq_class);
+    auto in1_it = eq_classes1.find(n->eq_class);
     if (in1_it == eq_classes1.end()) {
       eq_classes_only_2.insert(n->eq_class);
     } else {
@@ -183,8 +183,8 @@ void PrintEqClassses(std::vector<EqClass *> const &eq_classes) {
   for (EqClass const *eq_class : eq_classes) {
     Nodes to_print(eq_class->nodes);
     std::sort(to_print.begin(), to_print.end(), NodePathOrder());
-    for (Nodes::const_iterator node_it = to_print.begin();
-         node_it != to_print.end(); ++node_it) {
+    for (auto node_it = to_print.begin(); node_it != to_print.end();
+         ++node_it) {
       std::cout << (*node_it)->BuildPath().native();
       if (--to_print.end() != node_it) {
         std::cout << " ";

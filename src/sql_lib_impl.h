@@ -26,8 +26,9 @@ struct SqliteBind1<C,
                    typename std::enable_if<std::is_integral<C>::value>::type> {
   void operator()(sqlite3_stmt &s, int idx, C const &value) {
     int res = sqlite3_bind_int64(&s, idx, value);
-    if (res != SQLITE_OK)
+    if (res != SQLITE_OK) {
       throw sqlite_exception(res, "Binding parameter.");
+    }
   }
 };
 
@@ -36,16 +37,18 @@ struct SqliteBind1<
     C, typename std::enable_if<std::is_floating_point<C>::value>::type> {
   void operator()(sqlite3_stmt &s, int idx, C const &value) {
     int res = sqlite3_bind_double(&s, idx, value);
-    if (res != SQLITE_OK)
+    if (res != SQLITE_OK) {
       throw sqlite_exception(res, "Binding parameter.");
+    }
   }
 };
 
 template <> struct SqliteBind1<std::string> {
   void operator()(sqlite3_stmt &s, int idx, std::string const &str) {
-    char *mem = static_cast<char *>(malloc(str.length() + 1));
-    if (mem == NULL)
+    auto *mem = static_cast<char *>(malloc(str.length() + 1));
+    if (mem == nullptr) {
       throw std::bad_alloc();
+    }
 
     strncpy(mem, str.c_str(), str.length() + 1);
     int res = sqlite3_bind_text(&s, idx, mem, str.length(), free);
@@ -56,7 +59,7 @@ template <> struct SqliteBind1<std::string> {
   }
 };
 
-inline void SqliteBindImpl(sqlite3_stmt &s, int idx) {}
+inline void SqliteBindImpl(sqlite3_stmt & /*s*/, int /*idx*/) {}
 
 template <typename T, typename... Args>
 inline void SqliteBindImpl(sqlite3_stmt &s, int idx, T const &a, Args... args) {
@@ -95,8 +98,8 @@ template <> struct ExtractCell<std::string> {
 template <typename... Args> struct ExtractImpl;
 
 template <> struct ExtractImpl<> {
-  inline std::tuple<> operator()(sqlite3 &db, sqlite3_stmt &row,
-                                 int idx) const {
+  inline std::tuple<> operator()(sqlite3 & /*db*/, sqlite3_stmt & /*row*/,
+                                 int /*idx*/) const {
     return std::tuple<>();
   }
 };
@@ -127,7 +130,7 @@ std::tuple<Args...> Extract(sqlite3 &db, sqlite3_stmt &row) {
 // Reimplement C++14 index_sequence_for
 
 template <size_t... I> struct index_sequence {
-  typedef size_t value_type;
+  using value_type = size_t;
   static constexpr size_t size() { return sizeof...(I); }
 };
 
@@ -172,9 +175,8 @@ template <typename... Args>
 bool SqliteInputIt<Args...>::operator==(const SqliteInputIt<Args...> &o) const {
   if (this->stream) {
     return this->stream == o.stream;
-  } else {
-    return !o.stream;
   }
+  return !o.stream;
 }
 
 template <typename... Args>
@@ -198,7 +200,7 @@ template <typename... Args> void SqliteInputIt<Args...>::Fetch() {
 template <typename... Args, size_t... I>
 inline void dispatch_impl(OutStream<Args...> &stream,
                           const std::tuple<Args...> &t,
-                          detail::index_sequence<I...>) {
+                          detail::index_sequence<I...> /*unused*/) {
   stream.Write(std::get<I>(t)...);
 }
 
@@ -284,15 +286,18 @@ template <typename... Args>
 void OutStream<Args...>::Write(const Args &... args) {
   SqliteBind(*this->stmt, args...);
   int res = sqlite3_step(this->stmt.get());
-  if (res != SQLITE_DONE)
+  if (res != SQLITE_DONE) {
     throw sqlite_exception(this->conn.db, "Advancing output stream");
+  }
   res = sqlite3_clear_bindings(this->stmt.get());
-  if (res != SQLITE_OK)
+  if (res != SQLITE_OK) {
     throw sqlite_exception(this->conn.db, "Clearing output stream bindings");
+  }
   res = sqlite3_reset(this->stmt.get());
-  if (res != SQLITE_OK)
+  if (res != SQLITE_OK) {
     throw sqlite_exception(this->conn.db,
                            "Resetting statement in output stream");
+  }
 }
 
 template <typename... Args>

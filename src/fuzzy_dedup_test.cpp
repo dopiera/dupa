@@ -22,7 +22,7 @@ using boost::filesystem::path;
 
 class FuzzyDedupTest : public ::testing::Test {
 public:
-  FuzzyDedupTest() : root_node_(new Node(Node::DIR, "/")), unused_cksum_() {
+  FuzzyDedupTest() : root_node_(new Node(Node::DIR, "/")) {
     nodes_[root_node_->BuildPath().native()] = root_node_.get();
   }
 
@@ -36,7 +36,7 @@ public:
         cur_node = it->second;
         assert(cur_node->GetType() == Node::DIR);
       } else {
-        Node *new_node = new Node(Node::DIR, component.native());
+        auto *new_node = new Node(Node::DIR, component.native());
         cur_node->AddChild(new_node);
         assert(new_node->BuildPath() == cur_prefix);
         nodes_[new_node->BuildPath().native()] = new_node;
@@ -46,10 +46,11 @@ public:
     return cur_node;
   }
 
-  cksum EqClass2Cksum(std::string const eq_class) {
+  cksum EqClass2Cksum(std::string const &eq_class) {
     auto res = class_cksums_.insert(std::make_pair(eq_class, unused_cksum_));
-    if (res.second)
+    if (res.second) {
       ++unused_cksum_;
+    }
     return res.first->second;
   }
 
@@ -116,14 +117,14 @@ public:
   }
 
 protected:
-  virtual void SetUp() {}
-  virtual void TearDown() {}
+  void SetUp() override {}
+  void TearDown() override {}
 
   std::unordered_map<std::string, Node *> nodes_;
   std::unordered_map<std::string, cksum> class_cksums_;
   detail::Sum2Node sum2node_;
   std::shared_ptr<Node> root_node_;
-  cksum unused_cksum_;
+  cksum unused_cksum_{};
   FuzzyDedupRes res_;
 };
 

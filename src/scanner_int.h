@@ -68,7 +68,7 @@ void ScanDb(std::unordered_map<std::string, file_info> db,
             ScanProcessor<DirHandle> &processor) {
   using boost::filesystem::path;
 
-  if (db.size() == 0) {
+  if (db.empty()) {
     return;
   }
 

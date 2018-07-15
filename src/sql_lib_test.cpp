@@ -87,7 +87,7 @@ TEST_F(SqliteTest, InputIterator) {
 
   // Stupid gtest macros fail when given template instantiation, because they
   // contain commas.
-  typedef SqliteInputIt<int, float, std::string> InputIt;
+  using InputIt = SqliteInputIt<int, float, std::string>;
   ASSERT_EQ(InputIt(), res.end());
   auto it = res.begin();
   ASSERT_EQ(std::get<0>(*it), 1);

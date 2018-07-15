@@ -1,7 +1,7 @@
 #ifndef HASH_CACHE_H_6332
 #define HASH_CACHE_H_6332
 
-#include <stdint.h>
+#include <cstdint>
 
 #include <memory>
 #include <mutex>
@@ -13,10 +13,10 @@
 
 #include "sql_lib.h"
 
-typedef uint64_t cksum;
+using cksum = uint64_t;
 
 struct file_info {
-  file_info() {}
+  file_info() = default;
   file_info(off_t size, time_t mtime, cksum sum)
       : size(size), mtime(mtime), sum(sum) {}
 
@@ -49,7 +49,7 @@ private:
 
   static hash_cache *instance;
 
-  typedef std::unordered_map<std::string, file_info> cache_map;
+  using cache_map = std::unordered_map<std::string, file_info>;
   cache_map cache;
   std::unique_ptr<SqliteConnection> db;
   std::mutex mutex;

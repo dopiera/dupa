@@ -7,6 +7,7 @@
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index_container.hpp>
+#include <utility>
 
 #include "conf.h"
 #include "db_output.h"
@@ -18,44 +19,40 @@
 #include "sql_lib.h"
 #include "synch_thread_pool.h"
 
-using namespace std;
-using namespace boost;
-using namespace boost::filesystem;
-using namespace boost::multi_index;
+namespace fs = boost::filesystem;
+namespace mi = boost::multi_index;
 
 BOOST_STATIC_ASSERT(sizeof(off_t) == 8);
 
 struct path_hash {
-  path_hash(string const &path, cksum hash) : path(path), hash(hash) {}
+  path_hash(std::string path, cksum hash) : path(std::move(path)), hash(hash) {}
 
-  string path;
+  std::string path;
   cksum hash;
 };
 
 struct by_path {};
 struct by_hash {};
-typedef multi_index_container<
+using path_hashes = mi::multi_index_container<
     path_hash,
-    indexed_by<ordered_unique<tag<by_path>,
-                              member<path_hash, std::string, &path_hash::path>>,
-               ordered_non_unique<tag<by_hash>,
-                                  member<path_hash, cksum, &path_hash::hash>>>>
-    path_hashes;
-typedef path_hashes::index<by_path>::type path_hashes_by_path;
-typedef path_hashes::index<by_hash>::type path_hashes_by_hash;
+    mi::indexed_by<
+        mi::ordered_unique<mi::tag<by_path>, mi::member<path_hash, std::string,
+                                                        &path_hash::path>>,
+        mi::ordered_non_unique<
+            mi::tag<by_hash>, mi::member<path_hash, cksum, &path_hash::hash>>>>;
+using path_hashes_by_path = path_hashes::index<by_path>::type;
+using path_hashes_by_hash = path_hashes::index<by_hash>::type;
 
-struct PathHashesFiller : ScanProcessor<boost::filesystem::path> {
-  typedef boost::filesystem::path Path;
+struct PathHashesFiller : ScanProcessor<fs::path> {
+  explicit PathHashesFiller(path_hashes &hashes) : hashes_(hashes) {}
 
-  PathHashesFiller(path_hashes &hashes) : hashes_(hashes) {}
-
-  virtual void File(boost::filesystem::path const &path, Path const &parent,
-                    file_info const &f_info) {
-    Path const relative = parent / path.filename();
+  void File(fs::path const &path, fs::path const &parent,
+            file_info const &f_info) override {
+    fs::path const relative = parent / path.filename();
     hashes_.insert(path_hash(relative.native(), f_info.sum));
   }
-  virtual Path RootDir(boost::filesystem::path const &path) { return Path(); }
-  virtual Path Dir(boost::filesystem::path const &path, Path const &parent) {
+  fs::path RootDir(fs::path const & /*path*/) override { return fs::path(); }
+  fs::path Dir(fs::path const &path, fs::path const &parent) override {
     return parent / path.filename();
   }
 
@@ -67,13 +64,14 @@ void fill_path_hashes(std::string const &start_dir, path_hashes &hashes) {
   ScanDirectoryOrDb(start_dir, processor);
 }
 
-typedef vector<string> paths;
+using paths = std::vector<std::string>;
 
 template <class S> S &operator<<(S &stream, paths const &p) {
   stream << "[";
-  for (paths::const_iterator it = p.begin(); it != p.end(); ++it) {
-    if (it != p.begin())
+  for (auto it = p.begin(); it != p.end(); ++it) {
+    if (it != p.begin()) {
       stream << " ";
+    }
     stream << *it;
   }
   stream << "]";
@@ -88,13 +86,13 @@ paths get_paths_for_hash(path_hashes_by_hash &ps, cksum hash) {
   return res;
 }
 
-void dir_compare(path const &dir1, path const &dir2) {
+void dir_compare(fs::path const &dir1, fs::path const &dir2) {
   path_hashes hashes1, hashes2;
 
   std::thread h1filler(
-      std::bind(fill_path_hashes, std::ref(dir1.native()), std::ref(hashes1)));
+      [&dir1, &hashes1]() { fill_path_hashes(dir1.native(), hashes1); });
   std::thread h2filler(
-      std::bind(fill_path_hashes, std::ref(dir2.native()), std::ref(hashes2)));
+      [&dir2, &hashes2]() { fill_path_hashes(dir2.native(), hashes2); });
   h1filler.join();
   h2filler.join();
 
@@ -104,58 +102,59 @@ void dir_compare(path const &dir1, path const &dir2) {
   path_hashes_by_hash &hashes2h(hashes2.get<by_hash>());
 
   for (auto const &path_and_hash : hashes1p) {
-    string const &p1 = path_and_hash.path;
+    std::string const &p1 = path_and_hash.path;
     cksum h1 = path_and_hash.hash;
     path_hashes_by_path::const_iterator const same_path = hashes2p.find(p1);
     if (same_path != hashes2p.end()) {
       // this path exists in second dir
       cksum const h2 = same_path->hash;
       if (h1 == h2) {
-        // cout << "NOT_CHANGED: " << p1 << endl;
+        // std::cout << "NOT_CHANGED: " << p1 << std::endl;
       } else {
         paths ps = get_paths_for_hash(hashes1h, h2);
         if (not ps.empty()) {
           // rename from somewhere:
-          cout << "OVERWRITTEN_BY: " << p1 << " CANDIDATES: " << ps << endl;
+          std::cout << "OVERWRITTEN_BY: " << p1 << " CANDIDATES: " << ps
+                    << std::endl;
         } else {
-          cout << "CONTENT_CHANGED: " << p1 << endl;
+          std::cout << "CONTENT_CHANGED: " << p1 << std::endl;
         }
       }
     } else {
       paths ps = get_paths_for_hash(hashes2h, h1);
       if (not ps.empty()) {
         if (!Conf().skip_renames) {
-          cout << "RENAME: " << p1 << " -> " << ps << endl;
+          std::cout << "RENAME: " << p1 << " -> " << ps << std::endl;
         }
       } else {
-        cout << "REMOVED: " << p1 << endl;
+        std::cout << "REMOVED: " << p1 << std::endl;
       }
     }
   }
   for (auto const &path_and_hash : hashes2p) {
-    string const &p2 = path_and_hash.path;
+    std::string const &p2 = path_and_hash.path;
     cksum h2 = path_and_hash.hash;
     if (hashes1p.find(p2) != hashes1p.end()) {
       // path exists in both, so it has already been handled by the first
       // loop
       continue;
-    } else {
-      paths ps = get_paths_for_hash(hashes1h, h2);
-      if (not ps.empty()) {
-        paths ps2;
-        for (auto const &copy_candidate : ps) {
-          if (hashes2p.find(copy_candidate) != hashes2p.end()) {
-            ps2.push_back(copy_candidate);
-          }
-          // otherwise it's probably renamed from that file, so it's
-          // already mentioned
+    }
+    paths ps = get_paths_for_hash(hashes1h, h2);
+    if (not ps.empty()) {
+      paths ps2;
+      for (auto const &copy_candidate : ps) {
+        if (hashes2p.find(copy_candidate) != hashes2p.end()) {
+          ps2.push_back(copy_candidate);
         }
-        if (not ps2.empty()) {
-          cout << "COPIED_FROM: " << p2 << " CANDIDATES: " << ps2 << endl;
-        }
-      } else {
-        cout << "NEW_FILE: " << p2 << endl;
+        // otherwise it's probably renamed from that file, so it's
+        // already mentioned
       }
+      if (not ps2.empty()) {
+        std::cout << "COPIED_FROM: " << p2 << " CANDIDATES: " << ps2
+                  << std::endl;
+      }
+    } else {
+      std::cout << "NEW_FILE: " << p2 << std::endl;
     }
   }
 }
@@ -209,8 +208,8 @@ int main(int argc, char **argv) {
       // Should have been checked already.
       assert(false);
     }
-  } catch (ios_base::failure const &ex) {
-    cerr << "Failure: " << ex.what() << endl;
+  } catch (std::ios_base::failure const &ex) {
+    std::cerr << "Failure: " << ex.what() << std::endl;
     throw;
   }
 

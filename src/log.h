@@ -17,8 +17,8 @@ extern LogLevel stderr_loglevel;
 #define LOG(level, message)                                                    \
   do {                                                                         \
     if ((level) >= stderr_loglevel) {                                          \
-      ::std::cerr << __FILE__ << ":" << __LINE__ << ": " << message            \
-                  << std::endl;                                                \
+      ::std::cerr << __FILE__ << ":" << __LINE__ << ": "                       \
+                  << message /* NOLINT */ << std::endl;                        \
     }                                                                          \
   } while (0)
 

@@ -1,13 +1,15 @@
+#include <utility>
+
 #include "scanner_int.h"
 
 #include "test_common.h"
 #include "gtest/gtest.h"
 
 struct Node;
-typedef std::shared_ptr<Node> NodePtr;
+using NodePtr = std::shared_ptr<Node>;
 
 template <class T> typename T::value_type nth(T const &t, size_t n) {
-  typename T::const_iterator it = t.begin();
+  auto it = t.begin();
   assert(it != t.end());
   for (size_t i = 0; i < n; ++i) {
     ++it;
@@ -21,8 +23,8 @@ struct NodePtrComparator {
 };
 
 struct Node {
-  Node(std::string const &name) : name(name) {}
-  virtual ~Node() {}
+  explicit Node(std::string name) : name(std::move(name)) {}
+  virtual ~Node() = default;
 
   virtual bool IsFile() const { return !IsDir(); }
   virtual bool IsDir() const = 0;
@@ -39,28 +41,28 @@ bool NodePtrComparator::operator()(const NodePtr &n1, const NodePtr &n2) const {
 }
 
 struct File : public Node {
-  File(std::string const &name) : Node(name) {}
-  virtual bool IsDir() const { return false; }
+  explicit File(std::string const &name) : Node(name) {}
+  bool IsDir() const override { return false; }
 };
 
 struct Dir : public Node {
-  Dir(std::string const &name) : Node(name) {}
-  virtual bool IsDir() const { return true; }
+  explicit Dir(std::string const &name) : Node(name) {}
+  bool IsDir() const override { return true; }
 };
 
 struct TestProcessor : public ScanProcessor<NodePtr> {
-  virtual void File(boost::filesystem::path const &path, NodePtr const &parent,
-                    file_info const &f_info) {
+  void File(boost::filesystem::path const &path, NodePtr const &parent,
+            file_info const & /*f_info*/) override {
     parent->entries.insert(NodePtr(new ::File(path.native())));
   }
 
-  virtual NodePtr RootDir(boost::filesystem::path const &path) {
+  NodePtr RootDir(boost::filesystem::path const &path) override {
     root.reset(new ::Dir(path.native()));
     return root;
   }
 
-  virtual NodePtr Dir(boost::filesystem::path const &path,
-                      NodePtr const &parent) {
+  NodePtr Dir(boost::filesystem::path const &path,
+              NodePtr const &parent) override {
     NodePtr n(new ::Dir(path.native()));
     parent->entries.insert(n);
     return n;

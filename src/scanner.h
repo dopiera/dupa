@@ -1,7 +1,7 @@
 #ifndef SCANNER_H_6513
 #define SCANNER_H_6513
 
-#include <stdint.h>
+#include <cstdint>
 
 #include <boost/filesystem/path.hpp>
 
@@ -14,7 +14,7 @@ template <class DirHandle> struct ScanProcessor {
   virtual DirHandle RootDir(boost::filesystem::path const &path) = 0;
   virtual DirHandle Dir(boost::filesystem::path const &path,
                         DirHandle const &parent) = 0;
-  virtual ~ScanProcessor() {}
+  virtual ~ScanProcessor() = default;
 };
 
 // Will scan directory root and call appropriate methods of ScanProcessor. They
@@ -24,12 +24,12 @@ void ScanDirectory(boost::filesystem::path const &root,
                    ScanProcessor<DirHandle> &processor);
 
 template <class DirHandle>
-void ScanDb(boost::filesystem::path const &db,
+void ScanDb(boost::filesystem::path const &db_path,
             ScanProcessor<DirHandle> &processor);
 
 // Will call one of the 2 above.
 template <class DirHandle>
-void ScanDirectoryOrDb(std::string const &db,
+void ScanDirectoryOrDb(std::string const &path,
                        ScanProcessor<DirHandle> &processor);
 
 #endif /* SCANNER_H_6513 */

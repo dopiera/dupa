@@ -14,8 +14,8 @@
 class Node;
 class EqClass;
 
-typedef std::vector<Node *> Nodes;
-typedef std::vector<Node const *> CNodes;
+using Nodes = std::vector<Node *>;
+using CNodes = std::vector<const Node *>;
 
 // FIXME: the tree structure should be separated from the things computed on it.
 // The only reason why it is not is my laziness.
@@ -28,16 +28,16 @@ public:
 
   // Size is only meaningful for regular files.
   Node(Type type, std::string const &name, off_t size = 0)
-      : name(name), type(type), size(size), parent(NULL), eq_class(NULL),
+      : name(name), type(type), size(size), parent(nullptr), eq_class(nullptr),
         not_evaluated_children() {
-    assert(name != "");
+    assert(!name.empty());
     DLOG("Created file: '" << this->BuildPath().native() << "' with size "
                            << this->size << " and type " << this->type);
   }
 
   void AddChild(Node *child); // takes ownership
   bool IsReadyToEvaluate() const { return not_evaluated_children == 0; }
-  bool IsEvaluated() const { return eq_class != NULL; }
+  bool IsEvaluated() const { return eq_class != nullptr; }
   EqClass &GetEqClass() const {
     assert(eq_class);
     return *eq_class;
@@ -52,8 +52,8 @@ public:
   Nodes GetPossibleEquivalents() const;
   // Traverse the whole subtree (including this node) in a an unspecified
   // order and call callback on every node
-  void Traverse(std::function<void(Node *)> callback);
-  void Traverse(std::function<void(Node const *)> callback) const;
+  void Traverse(const std::function<void(Node *)> &callback);
+  void Traverse(const std::function<void(Node const *)> &callback) const;
   Nodes const &GetChildren() const { return this->children; }
   bool IsAncestorOf(Node const &node);
 
@@ -83,7 +83,6 @@ double NodeDistance(Node const &n1, Node const &n2);
 
 class EqClass : private boost::noncopyable {
 public:
-  EqClass() : nodes(), weight() {}
   bool IsEmpty() const { return nodes.empty(); }
   bool IsSingle() const { return nodes.size() == 1; }
   double GetWeight() const { return this->weight; }
@@ -91,7 +90,7 @@ public:
 
   void AddNode(Node &node); // does not take ownership
   Nodes nodes;
-  double weight;
+  double weight{};
 };
 
 // Filter out only equivalence classes which have duplicates and are not already

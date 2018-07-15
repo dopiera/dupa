@@ -11,7 +11,7 @@
 #include <boost/filesystem/path.hpp>
 
 struct SyncCounter {
-  SyncCounter(size_t initial = 0);
+  explicit SyncCounter(size_t initial = 0);
   void Increment();
   void Decrement();
   void WaitForZero();
@@ -23,7 +23,7 @@ private:
 };
 
 struct SyncThreadPool {
-  SyncThreadPool(int concurrency);
+  explicit SyncThreadPool(int concurrency);
 
   // All Submit() calls should finish before this can be called; This needs to
   // be called before destroying this object.
