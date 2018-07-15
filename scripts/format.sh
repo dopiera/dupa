@@ -20,7 +20,7 @@ fi
 
 format_diff() {
   local f="$1"
-  "$DIFF_CMD" $DIFF_PARAMS "$f" <(clang-format "$f")
+  "$DIFF_CMD" $DIFF_PARAMS "$f" <(clang-format -style=google "$f")
 }
 
 export DIFF_CMD

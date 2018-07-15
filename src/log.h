@@ -14,20 +14,20 @@ enum LogLevel {
 
 extern LogLevel stderr_loglevel;
 
-#define LOG(level, message)                                                    \
-  do {                                                                         \
-    if ((level) >= stderr_loglevel) {                                          \
-      ::std::cerr << __FILE__ << ":" << __LINE__ << ": "                       \
-                  << message /* NOLINT */ << std::endl;                        \
-    }                                                                          \
+#define LOG(level, message)                              \
+  do {                                                   \
+    if ((level) >= stderr_loglevel) {                    \
+      ::std::cerr << __FILE__ << ":" << __LINE__ << ": " \
+                  << message /* NOLINT */ << std::endl;  \
+    }                                                    \
   } while (0)
 
 #ifndef NDEBUG
 #define DLOG(message) LOG(DEBUG, message)
 #else
-#define DLOG(message)                                                          \
-  do {                                                                         \
+#define DLOG(message) \
+  do {                \
   } while (0)
 #endif /* NDEBUG */
 
-#endif // SRC_LOG_H_
+#endif  // SRC_LOG_H_

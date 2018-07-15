@@ -49,7 +49,8 @@ void SyncThreadPool::ThreadLoop() {
       if (this->closing_) {
         return;
       }
-      this->cv_.wait(lock, [this] { return !this->q_.empty() || this->closing_; });
+      this->cv_.wait(lock,
+                     [this] { return !this->q_.empty() || this->closing_; });
       if (this->closing_) {
         return;
       }

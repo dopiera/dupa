@@ -1,10 +1,10 @@
 #include "hash_cache.h"
 
-#include <cerrno>
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <cerrno>
 
 #include <memory>
 #include <utility>
@@ -63,7 +63,7 @@ class InodeCache {
                       st.st_mtime);
   }
 
-private:
+ private:
   using CacheMap = std::unordered_map<Uuid, Cksum, boost::hash<Uuid>>;
   CacheMap cache_map_;
   std::mutex mutex_;
@@ -136,14 +136,14 @@ std::unordered_map<std::string, FileInfo> ReadCacheFromDb(
 HashCache *HashCache::instance_;
 
 HashCache::Initializer::Initializer(std::string const &read_cache_from,
-                                     std::string const &dump_cache_to) {
+                                    std::string const &dump_cache_to) {
   HashCache::Initialize(read_cache_from, dump_cache_to);
 }
 
 HashCache::Initializer::~Initializer() { HashCache::Finalize(); }
 
 HashCache::HashCache(std::string const &read_cache_from,
-                       std::string const &dump_cache_to) {
+                     std::string const &dump_cache_to) {
   if (!read_cache_from.empty()) {
     auto cache = ReadCacheFromDb(read_cache_from);
     std::lock_guard<std::mutex> lock(this->mutex_);
@@ -157,12 +157,13 @@ HashCache::HashCache(std::string const &read_cache_from,
 HashCache::~HashCache() { this->StoreCksums(); }
 
 static void CreateOrEmptyTable(SqliteConnection &db) {
-  db.SqliteExec("DROP TABLE IF EXISTS Cache;"
-                "CREATE TABLE Cache("
-                "path           TEXT    UNIQUE NOT NULL,"
-                "cksum          INTEGER NOT NULL,"
-                "size           INTEGER NOT NULL,"
-                "mtime          INTEGER NOT NULL);");
+  db.SqliteExec(
+      "DROP TABLE IF EXISTS Cache;"
+      "CREATE TABLE Cache("
+      "path           TEXT    UNIQUE NOT NULL,"
+      "cksum          INTEGER NOT NULL,"
+      "size           INTEGER NOT NULL,"
+      "mtime          INTEGER NOT NULL);");
 }
 
 void HashCache::StoreCksums() {
@@ -178,7 +179,8 @@ void HashCache::StoreCksums() {
   std::transform(this->cache_.begin(), this->cache_.end(), out->begin(),
                  [](const std::pair<std::string, FileInfo> &file) {
                    return std::make_tuple(file.first, file.second.sum_,
-                                          file.second.size_, file.second.mtime_);
+                                          file.second.size_,
+                                          file.second.mtime_);
                  });
   trans.Commit();
 }
@@ -197,8 +199,8 @@ struct AutoFdCloser {
     }
   }
 
-private:
- int fd_;
+ private:
+  int fd_;
 };
 
 } /* anonymous namespace */
@@ -236,7 +238,7 @@ FileInfo HashCache::operator()(boost::filesystem::path const &p) {
 }
 
 void HashCache::Initialize(std::string const &read_cache_from,
-                            std::string const &dump_cache_to) {
+                           std::string const &dump_cache_to) {
   assert(!instance_);
   HashCache::instance_ = new HashCache(read_cache_from, dump_cache_to);
 }

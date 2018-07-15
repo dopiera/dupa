@@ -194,7 +194,7 @@ std::pair<Node *, double> GetClosestNode(Node const &ref,
     assert(*it != &ref);
     assert((*it)->IsEvaluated());
     double const distance = NodeDistance(ref, **it);
-    assert(distance < 1.1); // actually <= 1, but it's double
+    assert(distance < 1.1);  // actually <= 1, but it's double
 
     if (distance < min_dist) {
       min_it = it;
@@ -272,35 +272,35 @@ bool HasDuplicateElsewhere(Node const &n,
   return false;
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
 CNodes CalculateUniqueness(Node &node) {
   assert(node.IsEvaluated());
   switch (node.GetType()) {
-  case Node::FILE:
-    node.unique_fraction_ = node.GetEqClass().IsSingle() ? 1 : 0;
-    return CNodes(1, &node);
-  case Node::DIR:
-    std::unordered_set<Node const *> descendant_nodes;
-    for (Node *child : node.GetChildren()) {
-      CNodes const &child_nodes = CalculateUniqueness(*child);
-      std::copy(child_nodes.begin(), child_nodes.end(),
-                std::inserter(descendant_nodes, descendant_nodes.end()));
-    }
-    double total_weight = 0;
-    double unique_weight = 0;
-    for (Node const *desc : descendant_nodes) {
-      total_weight += desc->GetWeight();
-      if (!HasDuplicateElsewhere(*desc, descendant_nodes)) {
-        unique_weight += desc->GetWeight();
+    case Node::FILE:
+      node.unique_fraction_ = node.GetEqClass().IsSingle() ? 1 : 0;
+      return CNodes(1, &node);
+    case Node::DIR:
+      std::unordered_set<Node const *> descendant_nodes;
+      for (Node *child : node.GetChildren()) {
+        CNodes const &child_nodes = CalculateUniqueness(*child);
+        std::copy(child_nodes.begin(), child_nodes.end(),
+                  std::inserter(descendant_nodes, descendant_nodes.end()));
       }
-    }
-    node.unique_fraction_ = (total_weight == 0)
-                               ? 0 // empty directory is not unique
-                               : (unique_weight / total_weight);
-    return CNodes(descendant_nodes.begin(), descendant_nodes.end());
+      double total_weight = 0;
+      double unique_weight = 0;
+      for (Node const *desc : descendant_nodes) {
+        total_weight += desc->GetWeight();
+        if (!HasDuplicateElsewhere(*desc, descendant_nodes)) {
+          unique_weight += desc->GetWeight();
+        }
+      }
+      node.unique_fraction_ = (total_weight == 0)
+                                  ? 0  // empty directory is not unique
+                                  : (unique_weight / total_weight);
+      return CNodes(descendant_nodes.begin(), descendant_nodes.end());
   }
-  assert(false); // We really shouldn't be here.
+  assert(false);  // We really shouldn't be here.
   return CNodes();
 }
 

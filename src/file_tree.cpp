@@ -14,7 +14,7 @@
 void Node::AddChild(Node *child) {
   assert(!IsEvaluated());
   assert(child->parent_ == nullptr);
-  assert(!child->IsEvaluated()); // This is due to not_evaluated_children
+  assert(!child->IsEvaluated());  // This is due to not_evaluated_children
   assert(type_ == DIR);
   child->parent_ = this;
   this->children_.push_back(child);
@@ -43,26 +43,26 @@ double Node::GetWeight() const {
   }
 
   switch (type_) {
-  case FILE:
-    if (Conf().use_size_) {
-      return this->size_;
-    } else {
-      return 1;
+    case FILE:
+      if (Conf().use_size_) {
+        return this->size_;
+      } else {
+        return 1;
+      }
+    case DIR: {
+      std::unordered_set<EqClass *> eq_classes;
+      double weight = 0;
+      for (Node const *const n : this->children_) {
+        assert(n->IsEvaluated());
+        eq_classes.insert(&n->GetEqClass());
+      }
+      for (EqClass const *const eq_class : eq_classes) {
+        weight += eq_class->weight_;
+      }
+      return weight;
     }
-  case DIR: {
-    std::unordered_set<EqClass *> eq_classes;
-    double weight = 0;
-    for (Node const *const n : this->children_) {
-      assert(n->IsEvaluated());
-      eq_classes.insert(&n->GetEqClass());
-    }
-    for (EqClass const *const eq_class : eq_classes) {
-      weight += eq_class->weight_;
-    }
-    return weight;
   }
-  }
-  assert(false); // We shouldn't reach it;
+  assert(false);  // We shouldn't reach it;
   return 0;
 }
 
@@ -177,7 +177,7 @@ struct UniquenessOrder : public std::binary_function<Node *, Node *, bool> {
   }
 };
 
-} // anonymous namespace
+}  // anonymous namespace
 
 void PrintEqClassses(std::vector<EqClass *> const &eq_classes) {
   std::cout << "*** Classes of similar directories or files:" << std::endl;

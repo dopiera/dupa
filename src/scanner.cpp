@@ -15,4 +15,4 @@ path CommonPathPrefix(path const &p1, path const &p2) {
   return res;
 }
 
-} // namespace detail
+}  // namespace detail

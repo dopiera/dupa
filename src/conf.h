@@ -22,4 +22,4 @@ void ParseArgv(int argc, const char *const argv[]);
 void InitTestConf();
 GlobalConfig const &Conf();
 
-#endif // SRC_CONF_H_
+#endif  // SRC_CONF_H_

@@ -5,11 +5,11 @@
 #include <boost/filesystem/operations.hpp>
 
 #include "exceptions.h"
-#include "log.h"
 #include "gtest/gtest.h"
+#include "log.h"
 
 class TmpDir {
-public:
+ public:
   TmpDir() {
     char tmp_dir[] = "/tmp/dupa.XXXXXX";
     if (!mkdtemp(tmp_dir)) {
@@ -33,19 +33,19 @@ public:
 };
 
 class SqliteTest : public ::testing::Test {
-public:
- SqliteTest()
-     : db_(tmp_.dir_ + "/db.sqlite3"),
-       data_{std::make_tuple(1, 0.1, "one"), std::make_tuple(2, 0.2, "two"),
-             std::make_tuple(3, 0.3, "three"), std::make_tuple(4, 0.4, "four"),
-             std::make_tuple(5, 0.5, "five")} {}
- void CreateTable() {
-   this->db_.SqliteExec(
-       "CREATE TABLE Tbl("
-       "id INT PRIMARY KEY     NOT NULL,"
-       "dbl            DOUBLE  NOT NULL,"
-       "txt            TEXT    NOT NULL"
-       ");");
+ public:
+  SqliteTest()
+      : db_(tmp_.dir_ + "/db.sqlite3"),
+        data_{std::make_tuple(1, 0.1, "one"), std::make_tuple(2, 0.2, "two"),
+              std::make_tuple(3, 0.3, "three"), std::make_tuple(4, 0.4, "four"),
+              std::make_tuple(5, 0.5, "five")} {}
+  void CreateTable() {
+    this->db_.SqliteExec(
+        "CREATE TABLE Tbl("
+        "id INT PRIMARY KEY     NOT NULL,"
+        "dbl            DOUBLE  NOT NULL,"
+        "txt            TEXT    NOT NULL"
+        ");");
   }
   void InsertValues() {
     auto out_stream = this->db_.BatchInsert<int, double, std::string>(
@@ -60,10 +60,10 @@ public:
     return res;
   }
 
-protected:
- TmpDir tmp_;
- SqliteConnection db_;
- std::vector<std::tuple<int, float, char const *>> data_;
+ protected:
+  TmpDir tmp_;
+  SqliteConnection db_;
+  std::vector<std::tuple<int, float, char const *>> data_;
 };
 
 TEST_F(SqliteTest, TableCreate) { this->CreateTable(); }
@@ -81,8 +81,8 @@ TEST_F(SqliteTest, Inserting) {
 TEST_F(SqliteTest, InputIterator) {
   this->CreateTable();
   this->InsertValues();
-  auto res =
-      this->db_.Query<int, float, std::string>("SELECT * FROM Tbl ORDER BY id;");
+  auto res = this->db_.Query<int, float, std::string>(
+      "SELECT * FROM Tbl ORDER BY id;");
   ASSERT_EQ(res.end(), res.end());
 
   // Stupid gtest macros fail when given template instantiation, because they
@@ -125,8 +125,8 @@ TEST_F(SqliteTest, InputIterator) {
 
 TEST_F(SqliteTest, EmptyInputIterator) {
   this->CreateTable();
-  auto res =
-      this->db_.Query<int, float, std::string>("SELECT * FROM Tbl ORDER BY id;");
+  auto res = this->db_.Query<int, float, std::string>(
+      "SELECT * FROM Tbl ORDER BY id;");
   ASSERT_EQ(res.begin(), res.end());
 }
 
@@ -136,7 +136,8 @@ TEST_F(SqliteTest, Querying) {
   auto res = this->QueryAllValues();
 
   ASSERT_EQ(this->data_.size(), res.size());
-  auto diff = std::mismatch(this->data_.begin(), this->data_.end(), res.begin());
+  auto diff =
+      std::mismatch(this->data_.begin(), this->data_.end(), res.begin());
 
   ASSERT_EQ(diff.first, this->data_.end());
   ASSERT_EQ(diff.second, res.end());
@@ -147,13 +148,15 @@ TEST_F(SqliteTest, InsertFail) {
   this->InsertValues();
 
   // duplicate key, should fail
-  EXPECT_THROW(this->db_.SqliteExec("INSERT INTO Tbl VALUES(4, 4.0, \"four\");"),
-               SqliteException);
+  EXPECT_THROW(
+      this->db_.SqliteExec("INSERT INTO Tbl VALUES(4, 4.0, \"four\");"),
+      SqliteException);
 
   auto res = this->QueryAllValues();
 
   ASSERT_EQ(this->data_.size(), res.size());
-  auto diff = std::mismatch(this->data_.begin(), this->data_.end(), res.begin());
+  auto diff =
+      std::mismatch(this->data_.begin(), this->data_.end(), res.begin());
 
   ASSERT_EQ(diff.first, this->data_.end());
   ASSERT_EQ(diff.second, res.end());
@@ -170,7 +173,8 @@ TEST_F(SqliteTest, SuccessfulTransaction) {
   auto res = this->QueryAllValues();
 
   ASSERT_EQ(this->data_.size(), res.size());
-  auto diff = std::mismatch(this->data_.begin(), this->data_.end(), res.begin());
+  auto diff =
+      std::mismatch(this->data_.begin(), this->data_.end(), res.begin());
 
   ASSERT_EQ(diff.first, this->data_.end());
   ASSERT_EQ(diff.second, res.end());

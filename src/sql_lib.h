@@ -56,7 +56,7 @@ class SqliteInputIt
   bool operator==(const SqliteInputIt &o) const;
   bool operator!=(const SqliteInputIt &o) const;
 
-private:
+ private:
   void Fetch();
 
   InStream<ARGS...> *stream_;
@@ -83,12 +83,12 @@ class InStream {
   std::tuple<ARGS...> Read();
   bool Eof() const;
   SqliteInputIt<ARGS...> begin();  // NOLINT
-  SqliteInputIt<ARGS...> end();  // NOLINT
+  SqliteInputIt<ARGS...> end();    // NOLINT
 
   InStream(const InStream &) = delete;
   InStream &operator=(const InStream &) = delete;
 
-private:
+ private:
   using StmtPtr = detail::StmtPtr;
 
   InStream(SqliteConnection &conn, StmtPtr &&stmt);
@@ -111,7 +111,7 @@ class OutStream {
   OutStream(const OutStream &) = delete;
   OutStream &operator=(const OutStream &) = delete;
 
-private:
+ private:
   using StmtPtr = detail::StmtPtr;
 
   OutStream(SqliteConnection &conn, StmtPtr &&stmt);
@@ -126,36 +126,36 @@ class InStreamHolder {
   // The sole purpose of this class is to make SqliteConnection::Query()'s
   // result copyable, so that you can write:
   // for (const auto &[a, b] : conn.Query<int, std::string>("SELECT a, b..."))
-public:
- explicit InStreamHolder(std::shared_ptr<InStream<ARGS...>> impl)
-     : impl_(std::move(std::move(impl))) {}
- InStreamHolder(const InStreamHolder<ARGS...> &o) : impl_(o.impl) {}
- std::tuple<ARGS...> Read() { return this->impl_->Read(); }
- bool Eof() const { return this->impl_->Eof(); }
- SqliteInputIt<ARGS...> begin() { return this->impl_->begin(); }  // NOLINT
- SqliteInputIt<ARGS...> end() { return this->impl_->end(); }  // NOLINT
- InStreamHolder<ARGS...> &operator=(const InStreamHolder &o) {
-   this->impl_ = o.impl_;
+ public:
+  explicit InStreamHolder(std::shared_ptr<InStream<ARGS...>> impl)
+      : impl_(std::move(std::move(impl))) {}
+  InStreamHolder(const InStreamHolder<ARGS...> &o) : impl_(o.impl) {}
+  std::tuple<ARGS...> Read() { return this->impl_->Read(); }
+  bool Eof() const { return this->impl_->Eof(); }
+  SqliteInputIt<ARGS...> begin() { return this->impl_->begin(); }  // NOLINT
+  SqliteInputIt<ARGS...> end() { return this->impl_->end(); }      // NOLINT
+  InStreamHolder<ARGS...> &operator=(const InStreamHolder &o) {
+    this->impl_ = o.impl_;
   }
 
-private:
- std::shared_ptr<InStream<ARGS...>> impl_;
+ private:
+  std::shared_ptr<InStream<ARGS...>> impl_;
 };
 
 class SqliteTransaction {
-public:
+ public:
   explicit SqliteTransaction(SqliteConnection &conn);
   ~SqliteTransaction();
   void Rollback();
   void Commit();
 
-private:
- SqliteConnection &conn_;
- bool ongoing_;
+ private:
+  SqliteConnection &conn_;
+  bool ongoing_;
 };
 
 class SqliteConnection {
-public:
+ public:
   explicit SqliteConnection(std::string const &path,
                             int flags = SQLITE_OPEN_READWRITE |
                                         SQLITE_OPEN_CREATE);
@@ -166,7 +166,7 @@ public:
   std::unique_ptr<OutStream<ARGS...>> BatchInsert(const std::string &sql);
   void SqliteExec(const std::string &sql);
 
-private:
+ private:
   using StmtPtr = detail::StmtPtr;
 
   StmtPtr PrepareStmt(std::string const &sql);
@@ -179,4 +179,4 @@ private:
   friend class OutStream;
 };
 
-#endif // SRC_SQL_LIB_H_
+#endif  // SRC_SQL_LIB_H_

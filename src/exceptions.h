@@ -10,10 +10,10 @@ struct FsException : std::exception {
   ~FsException() noexcept override = default;
   char const *what() const noexcept override { return msg_.c_str(); }
 
-private:
- static std::string MsgFromErrno(int err, std::string const &operation);
+ private:
+  static std::string MsgFromErrno(int err, std::string const &operation);
 
- std::string msg_;
+  std::string msg_;
 };
 
-#endif // SRC_EXCEPTIONS_H_
+#endif  // SRC_EXCEPTIONS_H_

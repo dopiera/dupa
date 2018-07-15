@@ -14,4 +14,4 @@ void PrintTo(path const &p, std::ostream *os);
 } /* namespace filesystem */
 } /* namespace boost */
 
-#endif // SRC_TEST_COMMON_H_
+#endif  // SRC_TEST_COMMON_H_

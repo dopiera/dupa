@@ -5,7 +5,7 @@
 
 #include <boost/filesystem/path.hpp>
 
-#include "hash_cache.h" // for cksum
+#include "hash_cache.h"  // for cksum
 
 // DIR_HANDLE can be whatever provided that it has proper value semantics.
 template <class DIR_HANDLE>
@@ -33,4 +33,4 @@ template <class DIR_HANDLE>
 void ScanDirectoryOrDb(std::string const &path,
                        ScanProcessor<DIR_HANDLE> &processor);
 
-#endif // SRC_SCANNER_H_
+#endif  // SRC_SCANNER_H_

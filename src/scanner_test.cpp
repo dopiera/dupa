@@ -2,8 +2,8 @@
 
 #include "scanner_int.h"
 
-#include "test_common.h"
 #include "gtest/gtest.h"
+#include "test_common.h"
 
 struct Node;
 using NodePtr = std::shared_ptr<Node>;

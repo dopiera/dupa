@@ -16,10 +16,10 @@ struct SyncCounter {
   void Decrement();
   void WaitForZero();
 
-private:
- std::mutex m_;
- std::condition_variable cv_;
- volatile size_t cntr_;
+ private:
+  std::mutex m_;
+  std::condition_variable cv_;
+  volatile size_t cntr_;
 };
 
 struct SyncThreadPool {
@@ -32,7 +32,7 @@ struct SyncThreadPool {
   void Submit(std::function<void()> const &fun);
   ~SyncThreadPool();
 
-private:
+ private:
   void ThreadLoop();
 
   volatile bool closing_;
@@ -44,4 +44,4 @@ private:
   std::vector<std::unique_ptr<std::thread>> threads_;
 };
 
-#endif // SRC_SYNCH_THREAD_POOL_H_
+#endif  // SRC_SYNCH_THREAD_POOL_H_

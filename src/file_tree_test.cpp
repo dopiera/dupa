@@ -4,8 +4,8 @@
 #include <memory>
 #include <utility>
 
-#include "test_common.h"
 #include "gtest/gtest.h"
+#include "test_common.h"
 
 void PrintTo(Node const *n, std::ostream *os) {
   boost::filesystem::PrintTo(n->BuildPath(), os);

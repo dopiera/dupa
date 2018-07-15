@@ -8,7 +8,7 @@
 #include <unordered_map>
 
 #include "file_tree.h"
-#include "hash_cache.h" // for Cksum
+#include "hash_cache.h"  // for Cksum
 
 using EqClasses = std::vector<std::unique_ptr<EqClass>>;
 using EqClassesPtr = std::shared_ptr<EqClasses>;
@@ -56,4 +56,4 @@ CNodes CalculateUniqueness(Node &node);
 
 } /* namespace detail */
 
-#endif // SRC_FUZZY_DEDUP_H_
+#endif  // SRC_FUZZY_DEDUP_H_

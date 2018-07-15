@@ -55,4 +55,4 @@ class HashCache {
   std::mutex mutex_;
 };
 
-#endif // SRC_HASH_CACHE_H_
+#endif  // SRC_HASH_CACHE_H_

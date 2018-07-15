@@ -42,12 +42,13 @@ SqliteConnection::SqliteConnection(std::string const &path, int flags) {
     throw SqliteException(res, "Opening DB " + path);
   }
   // I don't care about consistency. This data is easilly regneratable.
-  const char sql[] = "PRAGMA page_size = 65536; "
-                     "PRAGMA synchronous = 0; "
-                     "PRAGMA journal_mode = OFF;"
-                     // Sqlite3 doesn't enforce them by default, but we will so
-                     // that we find bugs.
-                     "PRAGMA foreign_keys = 1;";
+  const char sql[] =
+      "PRAGMA page_size = 65536; "
+      "PRAGMA synchronous = 0; "
+      "PRAGMA journal_mode = OFF;"
+      // Sqlite3 doesn't enforce them by default, but we will so
+      // that we find bugs.
+      "PRAGMA foreign_keys = 1;";
   char *err_msg_raw;
   res = sqlite3_exec(this->db_, sql, nullptr, nullptr, &err_msg_raw);
   if (res != SQLITE_OK) {
@@ -67,24 +68,26 @@ SqliteConnection::~SqliteConnection() {
   }
 }
 
-SqliteConnection::StmtPtr
-SqliteConnection::PrepareStmt(std::string const &sql) {
+SqliteConnection::StmtPtr SqliteConnection::PrepareStmt(
+    std::string const &sql) {
   sqlite3_stmt *raw_stmt_ptr;
   int res =
       sqlite3_prepare_v2(this->db_, sql.c_str(), -1, &raw_stmt_ptr, nullptr);
   if (res != SQLITE_OK) {
-    throw SqliteException(this->db_, std::string("Preparing statement: ") + sql);
+    throw SqliteException(this->db_,
+                          std::string("Preparing statement: ") + sql);
   }
   return StmtPtr(raw_stmt_ptr);
 }
 
 void SqliteConnection::SqliteExec(const std::string &sql) {
   char *err_msg_raw;
-  int res = sqlite3_exec(this->db_, sql.c_str(), nullptr, nullptr, &err_msg_raw);
+  int res =
+      sqlite3_exec(this->db_, sql.c_str(), nullptr, nullptr, &err_msg_raw);
   if (res != SQLITE_OK) {
     auto err_msg = MakeSqliteUnique(err_msg_raw);
-    throw SqliteException(
-        this->db_, std::string("Executing SQL (") + sql + "): " + err_msg.get());
+    throw SqliteException(this->db_, std::string("Executing SQL (") + sql +
+                                         "): " + err_msg.get());
   }
 }
 

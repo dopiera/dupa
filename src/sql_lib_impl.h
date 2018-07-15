@@ -44,7 +44,8 @@ struct SqliteBind1<
   }
 };
 
-template <> struct SqliteBind1<std::string> {
+template <>
+struct SqliteBind1<std::string> {
   void operator()(sqlite3_stmt &s, int idx, std::string const &str) {
     auto *mem = static_cast<char *>(malloc(str.length() + 1));
     if (mem == nullptr) {
@@ -90,7 +91,8 @@ struct ExtractCell<
   }
 };
 
-template <> struct ExtractCell<std::string> {
+template <>
+struct ExtractCell<std::string> {
   std::string operator()(sqlite3_stmt &row, int idx) {
     return std::string(
         reinterpret_cast<const char *>(sqlite3_column_text(&row, idx)));
@@ -100,7 +102,8 @@ template <> struct ExtractCell<std::string> {
 template <typename... ARGS>
 struct ExtractImpl;
 
-template <> struct ExtractImpl<> {
+template <>
+struct ExtractImpl<> {
   inline std::tuple<> operator()(sqlite3 & /*db*/, sqlite3_stmt & /*row*/,
                                  int /*idx*/) const {
     return std::tuple<>();
@@ -247,16 +250,16 @@ void InStream<ARGS...>::Fetch() {
   this->next_row_.reset();
   const int res = sqlite3_step(stmt_.get());
   switch (res) {
-  case SQLITE_DONE:
-    this->stmt_.reset();
-    break;
-  case SQLITE_ROW:
-    this->next_row_.reset(new std::tuple<ARGS...>(
-        detail::Extract<ARGS...>(*this->conn_.db_, *stmt_)));
-    break;
-    // Consider special handling of SQLITE_OK to indicate misuse
-  default:
-    throw SqliteException(res, "Trying to read from stream.");
+    case SQLITE_DONE:
+      this->stmt_.reset();
+      break;
+    case SQLITE_ROW:
+      this->next_row_.reset(new std::tuple<ARGS...>(
+          detail::Extract<ARGS...>(*this->conn_.db_, *stmt_)));
+      break;
+      // Consider special handling of SQLITE_OK to indicate misuse
+    default:
+      throw SqliteException(res, "Trying to read from stream.");
   }
 }
 
@@ -317,4 +320,4 @@ SqliteOutputIt<ARGS...> OutStream<ARGS...>::begin() {  // NOLINT
   return SqliteOutputIt<ARGS...>(*this);
 }
 
-#endif // SRC_SQL_LIB_IMPL_H_
+#endif  // SRC_SQL_LIB_IMPL_H_

@@ -9,7 +9,7 @@
 using boost::filesystem::path;
 
 class FuzzyDedupTest : public ::testing::Test {
-public:
+ public:
   FuzzyDedupTest() : root_node_(new Node(Node::DIR, "/")) {
     nodes_[root_node_->BuildPath().native()] = root_node_.get();
   }
@@ -103,7 +103,7 @@ public:
     }
   }
 
-protected:
+ protected:
   void SetUp() override {}
   void TearDown() override {}
 

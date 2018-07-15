@@ -5,23 +5,24 @@
 #include "sql_lib_impl.h"
 
 void CreateResultsDatabase(SqliteConnection &db) {
-  db.SqliteExec("DROP TABLE IF EXISTS Node;"
-                "DROP TABLE IF EXISTS EqClass;"
-                "CREATE TABLE EqClass("
-                "id INT PRIMARY  KEY     NOT NULL,"
-                "nodes           INT     NOT NULL,"
-                "weight          DOUBLE  NOT NULL,"
-                "interesting     BOOL    NOT NULL);"
-                "CREATE TABLE Node("
-                "id INT PRIMARY  KEY     NOT NULL,"
-                "name            TEXT    NOT NULL,"
-                "path            TEXT    NOT NULL,"
-                "type            CHAR(5) NOT NULL,"
-                "cksum           INTEGER," // NULL for directories
-                "unique_fraction DOUBLE  NOT NULL,"
-                "eq_class        INT     NOT NULL,"
-                "FOREIGN KEY(eq_class) REFERENCES EqClass(id)"
-                "ON UPDATE RESTRICT ON DELETE RESTRICT);");
+  db.SqliteExec(
+      "DROP TABLE IF EXISTS Node;"
+      "DROP TABLE IF EXISTS EqClass;"
+      "CREATE TABLE EqClass("
+      "id INT PRIMARY  KEY     NOT NULL,"
+      "nodes           INT     NOT NULL,"
+      "weight          DOUBLE  NOT NULL,"
+      "interesting     BOOL    NOT NULL);"
+      "CREATE TABLE Node("
+      "id INT PRIMARY  KEY     NOT NULL,"
+      "name            TEXT    NOT NULL,"
+      "path            TEXT    NOT NULL,"
+      "type            CHAR(5) NOT NULL,"
+      "cksum           INTEGER,"  // NULL for directories
+      "unique_fraction DOUBLE  NOT NULL,"
+      "eq_class        INT     NOT NULL,"
+      "FOREIGN KEY(eq_class) REFERENCES EqClass(id)"
+      "ON UPDATE RESTRICT ON DELETE RESTRICT);");
 }
 
 void DumpInterestingEqClasses(SqliteConnection &db,
@@ -29,11 +30,11 @@ void DumpInterestingEqClasses(SqliteConnection &db,
   SqliteTransaction trans(db);
   auto out = db.BatchInsert<uintptr_t>(
       "UPDATE EqClass SET interesting = 1 WHERE id == ?");
-  std::transform(eq_classes.begin(), eq_classes.end(), out->begin(),
-                 [](EqClass *eq_class_ptr) {
-                   return std::make_tuple(
-                       reinterpret_cast<uintptr_t>(eq_class_ptr));
-                 });
+  std::transform(
+      eq_classes.begin(), eq_classes.end(), out->begin(),
+      [](EqClass *eq_class_ptr) {
+        return std::make_tuple(reinterpret_cast<uintptr_t>(eq_class_ptr));
+      });
   trans.Commit();
 }
 

@@ -20,7 +20,7 @@ namespace detail {
 boost::filesystem::path CommonPathPrefix(boost::filesystem::path const &p1,
                                          boost::filesystem::path const &p2);
 
-} // namespace detail
+}  // namespace detail
 
 template <class DIR_HANDLE>
 void ScanDirectory(boost::filesystem::path const &root,
@@ -132,4 +132,4 @@ void ScanDirectoryOrDb(std::string const &path,
   }
 }
 
-#endif // SRC_SCANNER_INT_H_
+#endif  // SRC_SCANNER_INT_H_

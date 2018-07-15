@@ -25,7 +25,8 @@ namespace mi = boost::multi_index;
 static_assert(sizeof(off_t) == 8);
 
 struct PathHash {
-  PathHash(std::string path, Cksum hash) : path_(std::move(path)), hash_(hash) {}
+  PathHash(std::string path, Cksum hash)
+      : path_(std::move(path)), hash_(hash) {}
 
   std::string path_;
   Cksum hash_;
@@ -36,10 +37,10 @@ struct ByHash {};
 using PathHashes = mi::multi_index_container<
     PathHash,
     mi::indexed_by<
-        mi::ordered_unique<mi::tag<ByPath>, mi::member<PathHash, std::string,
-                                                       &PathHash::path_>>,
-        mi::ordered_non_unique<
-            mi::tag<ByHash>, mi::member<PathHash, Cksum, &PathHash::hash_>>>>;
+        mi::ordered_unique<mi::tag<ByPath>,
+                           mi::member<PathHash, std::string, &PathHash::path_>>,
+        mi::ordered_non_unique<mi::tag<ByHash>,
+                               mi::member<PathHash, Cksum, &PathHash::hash_>>>>;
 using PathHashesByPath = PathHashes::index<ByPath>::type;
 using PathHashesByHash = PathHashes::index<ByHash>::type;
 
@@ -66,7 +67,8 @@ void FillPathHashes(std::string const &start_dir, PathHashes &hashes) {
 
 using Paths = std::vector<std::string>;
 
-template <class S> S &operator<<(S &stream, Paths const &p) {
+template <class S>
+S &operator<<(S &stream, Paths const &p) {
   stream << "[";
   for (auto it = p.begin(); it != p.end(); ++it) {
     if (it != p.begin()) {
@@ -185,7 +187,7 @@ int main(int argc, char **argv) {
       // Open database first to catch configuration issues soon.
       std::unique_ptr<SqliteConnection> db(
           Conf().sql_out_.empty() ? nullptr
-                                 : new SqliteConnection(Conf().sql_out_));
+                                  : new SqliteConnection(Conf().sql_out_));
       FuzzyDedupRes res = FuzzyDedup(Conf().dirs_[0]);
       if (!res.first) {
         // no nodes at all

@@ -19,7 +19,7 @@ using CNodes = std::vector<const Node *>;
 // FIXME: the tree structure should be separated from the things computed on it.
 // The only reason why it is not is my laziness.
 class Node {
-public:
+ public:
   enum Type {
     DIR,
     FILE,
@@ -40,7 +40,7 @@ public:
   Node(const Node &n) = delete;
   Node &operator=(const Node &n) = delete;
 
-  void AddChild(Node *child); // takes ownership
+  void AddChild(Node *child);  // takes ownership
   bool IsReadyToEvaluate() const { return not_evaluated_children_ == 0; }
   bool IsEvaluated() const { return eq_class_ != nullptr; }
   EqClass &GetEqClass() const {
@@ -64,7 +64,7 @@ public:
 
   ~Node();
 
-private:
+ private:
   void SetEqClass(EqClass *eq_class);
 
   std::string name_;
@@ -87,7 +87,7 @@ private:
 double NodeDistance(Node const &n1, Node const &n2);
 
 class EqClass {
-public:
+ public:
   EqClass() = default;
   EqClass(const EqClass &) = delete;
   EqClass &operator=(const EqClass &) = delete;
@@ -97,7 +97,7 @@ public:
   double GetWeight() const { return this->weight_; }
   size_t GetNumNodes() const { return this->nodes_.size(); }
 
-  void AddNode(Node &node); // does not take ownership
+  void AddNode(Node &node);  // does not take ownership
   Nodes nodes_;
   double weight_{};
 };
@@ -110,4 +110,4 @@ void PrintEqClassses(std::vector<EqClass *> const &eq_classes);
 // duplicated to file outside of it.
 void PrintScatteredDirectories(Node const &root);
 
-#endif // SRC_FILE_TREE_H_
+#endif  // SRC_FILE_TREE_H_
