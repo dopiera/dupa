@@ -20,32 +20,32 @@ void ParseArgv(int argc, const char *const argv[]) {
   po::options_description hidden_desc("Hidden options");
   hidden_desc.add_options()(
       "directory,d",
-      po::value<std::vector<std::string>>(&conf->dirs)->composing(),
+      po::value<std::vector<std::string>>(&conf->dirs_)->composing(),
       "directory to analyze");
   po::options_description desc("usage: dupa dir1 [dir2]");
   desc.add_options()("help,h", "produce help message")(
-      "read_cache_from,c", po::value<std::string>(&conf->read_cache_from),
+      "read_cache_from,c", po::value<std::string>(&conf->read_cache_from_),
       "path to the file from which to read checksum cache")(
-      "dump_cache_to,C", po::value<std::string>(&conf->dump_cache_to),
+      "dump_cache_to,C", po::value<std::string>(&conf->dump_cache_to_),
       "path to which to dump the checksum cache")(
-      "sql_out,o", po::value<std::string>(&conf->sql_out),
+      "sql_out,o", po::value<std::string>(&conf->sql_out_),
       "if set, path to where SQLite3 results will be dumped")(
-      "cache_only,1", po::bool_switch(&conf->cache_only)->default_value(false),
+      "cache_only,1", po::bool_switch(&conf->cache_only_)->default_value(false),
       "only generate checksums cache")(
-      "use_size,s", po::bool_switch(&conf->use_size)->default_value(false),
+      "use_size,s", po::bool_switch(&conf->use_size_)->default_value(false),
       "use file size rather than number of files as a measure of directory "
       "sizes")("ignore_db_prefix,r",
-               po::bool_switch(&conf->ignore_db_prefix)->default_value(false),
+               po::bool_switch(&conf->ignore_db_prefix_)->default_value(false),
                "when parsing directory name, ignore the \"db:\" prefix")(
       "skip_renames,w",
-      po::bool_switch(&conf->skip_renames)->default_value(false),
+      po::bool_switch(&conf->skip_renames_)->default_value(false),
       "when comparing directories, don't print renames")(
-      "verbose,v", po::bool_switch(&conf->verbose)->default_value(false),
+      "verbose,v", po::bool_switch(&conf->verbose_)->default_value(false),
       "be verbose")("concurrency,j",
-                    po::value<int>(&conf->concurrency)->default_value(4),
+                    po::value<int>(&conf->concurrency_)->default_value(4),
                     "number of concurrently computed checksums")(
       "tolerable_diff_pct,t",
-      po::value<int>(&conf->tolerable_diff_pct)->default_value(20),
+      po::value<int>(&conf->tolerable_diff_pct_)->default_value(20),
       "directories different by this percent or less will be considered "
       "duplicates");
 
@@ -66,7 +66,7 @@ void ParseArgv(int argc, const char *const argv[]) {
     exit(1);
   }
 
-  if (conf->verbose) {
+  if (conf->verbose_) {
     stderr_loglevel = DEBUG;
   }
 
@@ -74,7 +74,7 @@ void ParseArgv(int argc, const char *const argv[]) {
     std::cerr << desc << std::endl;
     exit(0);
   }
-  if (Conf().dirs.empty()) {
+  if (Conf().dirs_.empty()) {
     std::cerr << desc << std::endl;
     exit(1);
   }

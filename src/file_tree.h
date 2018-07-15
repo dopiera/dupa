@@ -27,35 +27,39 @@ public:
 
   // Size is only meaningful for regular files.
   Node(Type type, std::string const &name, off_t size = 0)
-      : name(name), type(type), size(size), parent(nullptr), eq_class(nullptr),
-        not_evaluated_children() {
+      : name_(name),
+        type_(type),
+        size_(size),
+        parent_(nullptr),
+        eq_class_(nullptr),
+        not_evaluated_children_() {
     assert(!name.empty());
     DLOG("Created file: '" << this->BuildPath().native() << "' with size "
-                           << this->size << " and type " << this->type);
+                           << this->size_ << " and type " << this->type_);
   }
   Node(const Node &n) = delete;
   Node &operator=(const Node &n) = delete;
 
   void AddChild(Node *child); // takes ownership
-  bool IsReadyToEvaluate() const { return not_evaluated_children == 0; }
-  bool IsEvaluated() const { return eq_class != nullptr; }
+  bool IsReadyToEvaluate() const { return not_evaluated_children_ == 0; }
+  bool IsEvaluated() const { return eq_class_ != nullptr; }
   EqClass &GetEqClass() const {
-    assert(eq_class);
-    return *eq_class;
+    assert(eq_class_);
+    return *eq_class_;
   }
-  Type GetType() const { return this->type; }
-  bool IsEmptyDir() const { return GetType() == DIR && children.empty(); }
+  Type GetType() const { return this->type_; }
+  bool IsEmptyDir() const { return GetType() == DIR && children_.empty(); }
   boost::filesystem::path BuildPath() const;
   double GetWeight() const;
-  std::string const &GetName() const { return this->name; }
-  Node *GetParent() { return parent; }
+  std::string const &GetName() const { return this->name_; }
+  Node *GetParent() { return parent_; }
   // Return all nodes which are evaluated and share a child with this one.
   Nodes GetPossibleEquivalents() const;
   // Traverse the whole subtree (including this node) in a an unspecified
   // order and call callback on every node
   void Traverse(const std::function<void(Node *)> &callback);
   void Traverse(const std::function<void(Node const *)> &callback) const;
-  Nodes const &GetChildren() const { return this->children; }
+  Nodes const &GetChildren() const { return this->children_; }
   bool IsAncestorOf(Node const &node);
 
   ~Node();
@@ -63,17 +67,17 @@ public:
 private:
   void SetEqClass(EqClass *eq_class);
 
-  std::string name;
-  Type type;
-  off_t size;
-  Node *parent;
-  Nodes children;
-  EqClass *eq_class;
-  int not_evaluated_children;
+  std::string name_;
+  Type type_;
+  off_t size_;
+  Node *parent_;
+  Nodes children_;
+  EqClass *eq_class_;
+  int not_evaluated_children_;
 
-public:
+ public:
   // FIXME: this is a great indication that separation is broken here
-  double unique_fraction;
+  double unique_fraction_;
 
   friend double NodeDistance(Node const &n1, Node const &n2);
   friend class EqClass;
@@ -88,14 +92,14 @@ public:
   EqClass(const EqClass &) = delete;
   EqClass &operator=(const EqClass &) = delete;
 
-  bool IsEmpty() const { return nodes.empty(); }
-  bool IsSingle() const { return nodes.size() == 1; }
-  double GetWeight() const { return this->weight; }
-  size_t GetNumNodes() const { return this->nodes.size(); }
+  bool IsEmpty() const { return nodes_.empty(); }
+  bool IsSingle() const { return nodes_.size() == 1; }
+  double GetWeight() const { return this->weight_; }
+  size_t GetNumNodes() const { return this->nodes_.size(); }
 
   void AddNode(Node &node); // does not take ownership
-  Nodes nodes;
-  double weight{};
+  Nodes nodes_;
+  double weight_{};
 };
 
 // Filter out only equivalence classes which have duplicates and are not already

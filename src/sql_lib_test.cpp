@@ -13,64 +13,64 @@ public:
   TmpDir() {
     char tmp_dir[] = "/tmp/dupa.XXXXXX";
     if (!mkdtemp(tmp_dir)) {
-      throw fs_exception(errno, "Creating a temp directory");
+      throw FsException(errno, "Creating a temp directory");
     }
-    this->dir = tmp_dir;
+    this->dir_ = tmp_dir;
   }
 
   ~TmpDir() {
     try {
-      boost::filesystem::remove_all(this->dir);
+      boost::filesystem::remove_all(this->dir_);
     } catch (const boost::filesystem::filesystem_error &e) {
       LOG(ERROR, std::string("Failed to remove temp test directory "
                              "because (") +
-                     e.what() + "), leaving garbage behind (" + this->dir +
+                     e.what() + "), leaving garbage behind (" + this->dir_ +
                      ")");
     }
   }
 
-  std::string dir;
+  std::string dir_;
 };
 
 class SqliteTest : public ::testing::Test {
 public:
-  SqliteTest()
-      : db(tmp.dir + "/db.sqlite3"), data{std::make_tuple(1, 0.1, "one"),
-                                          std::make_tuple(2, 0.2, "two"),
-                                          std::make_tuple(3, 0.3, "three"),
-                                          std::make_tuple(4, 0.4, "four"),
-                                          std::make_tuple(5, 0.5, "five")} {}
-  void CreateTable() {
-    this->db.SqliteExec("CREATE TABLE Tbl("
-                        "id INT PRIMARY KEY     NOT NULL,"
-                        "dbl            DOUBLE  NOT NULL,"
-                        "txt            TEXT    NOT NULL"
-                        ");");
+ SqliteTest()
+     : db_(tmp_.dir_ + "/db.sqlite3"),
+       data_{std::make_tuple(1, 0.1, "one"), std::make_tuple(2, 0.2, "two"),
+             std::make_tuple(3, 0.3, "three"), std::make_tuple(4, 0.4, "four"),
+             std::make_tuple(5, 0.5, "five")} {}
+ void CreateTable() {
+   this->db_.SqliteExec(
+       "CREATE TABLE Tbl("
+       "id INT PRIMARY KEY     NOT NULL,"
+       "dbl            DOUBLE  NOT NULL,"
+       "txt            TEXT    NOT NULL"
+       ");");
   }
   void InsertValues() {
-    auto out_stream = this->db.BatchInsert<int, double, std::string>(
+    auto out_stream = this->db_.BatchInsert<int, double, std::string>(
         "INSERT INTO Tbl VALUES(?, ?, ?);");
-    std::copy(this->data.begin(), this->data.end(), out_stream->begin());
+    std::copy(this->data_.begin(), this->data_.end(), out_stream->begin());
   }
   std::vector<std::tuple<int, float, std::string>> QueryAllValues() {
     std::vector<std::tuple<int, float, std::string>> res;
-    auto in_stream = this->db.Query<int, float, std::string>(
+    auto in_stream = this->db_.Query<int, float, std::string>(
         "SELECT * FROM Tbl ORDER BY id;");
     std::copy(in_stream.begin(), in_stream.end(), std::back_inserter(res));
     return res;
   }
 
 protected:
-  TmpDir tmp;
-  SqliteConnection db;
-  std::vector<std::tuple<int, float, char const *>> data;
+ TmpDir tmp_;
+ SqliteConnection db_;
+ std::vector<std::tuple<int, float, char const *>> data_;
 };
 
 TEST_F(SqliteTest, TableCreate) { this->CreateTable(); }
 
 TEST_F(SqliteTest, DoubleTableCreate) {
   this->CreateTable();
-  EXPECT_THROW(this->CreateTable(), sqlite_exception);
+  EXPECT_THROW(this->CreateTable(), SqliteException);
 }
 
 TEST_F(SqliteTest, Inserting) {
@@ -82,7 +82,7 @@ TEST_F(SqliteTest, InputIterator) {
   this->CreateTable();
   this->InsertValues();
   auto res =
-      this->db.Query<int, float, std::string>("SELECT * FROM Tbl ORDER BY id;");
+      this->db_.Query<int, float, std::string>("SELECT * FROM Tbl ORDER BY id;");
   ASSERT_EQ(res.end(), res.end());
 
   // Stupid gtest macros fail when given template instantiation, because they
@@ -126,7 +126,7 @@ TEST_F(SqliteTest, InputIterator) {
 TEST_F(SqliteTest, EmptyInputIterator) {
   this->CreateTable();
   auto res =
-      this->db.Query<int, float, std::string>("SELECT * FROM Tbl ORDER BY id;");
+      this->db_.Query<int, float, std::string>("SELECT * FROM Tbl ORDER BY id;");
   ASSERT_EQ(res.begin(), res.end());
 }
 
@@ -135,10 +135,10 @@ TEST_F(SqliteTest, Querying) {
   this->InsertValues();
   auto res = this->QueryAllValues();
 
-  ASSERT_EQ(this->data.size(), res.size());
-  auto diff = std::mismatch(this->data.begin(), this->data.end(), res.begin());
+  ASSERT_EQ(this->data_.size(), res.size());
+  auto diff = std::mismatch(this->data_.begin(), this->data_.end(), res.begin());
 
-  ASSERT_EQ(diff.first, this->data.end());
+  ASSERT_EQ(diff.first, this->data_.end());
   ASSERT_EQ(diff.second, res.end());
 }
 
@@ -147,39 +147,39 @@ TEST_F(SqliteTest, InsertFail) {
   this->InsertValues();
 
   // duplicate key, should fail
-  EXPECT_THROW(this->db.SqliteExec("INSERT INTO Tbl VALUES(4, 4.0, \"four\");"),
-               sqlite_exception);
+  EXPECT_THROW(this->db_.SqliteExec("INSERT INTO Tbl VALUES(4, 4.0, \"four\");"),
+               SqliteException);
 
   auto res = this->QueryAllValues();
 
-  ASSERT_EQ(this->data.size(), res.size());
-  auto diff = std::mismatch(this->data.begin(), this->data.end(), res.begin());
+  ASSERT_EQ(this->data_.size(), res.size());
+  auto diff = std::mismatch(this->data_.begin(), this->data_.end(), res.begin());
 
-  ASSERT_EQ(diff.first, this->data.end());
+  ASSERT_EQ(diff.first, this->data_.end());
   ASSERT_EQ(diff.second, res.end());
 }
 
 TEST_F(SqliteTest, SuccessfulTransaction) {
   this->CreateTable();
   {
-    SqliteTransaction trans(this->db);
+    SqliteTransaction trans(this->db_);
     this->InsertValues();
     trans.Commit();
   }
 
   auto res = this->QueryAllValues();
 
-  ASSERT_EQ(this->data.size(), res.size());
-  auto diff = std::mismatch(this->data.begin(), this->data.end(), res.begin());
+  ASSERT_EQ(this->data_.size(), res.size());
+  auto diff = std::mismatch(this->data_.begin(), this->data_.end(), res.begin());
 
-  ASSERT_EQ(diff.first, this->data.end());
+  ASSERT_EQ(diff.first, this->data_.end());
   ASSERT_EQ(diff.second, res.end());
 }
 
 TEST_F(SqliteTest, AbortedTransaction) {
   this->CreateTable();
   {
-    SqliteTransaction trans(this->db);
+    SqliteTransaction trans(this->db_);
     this->InsertValues();
     trans.Rollback();
   }
@@ -192,7 +192,7 @@ TEST_F(SqliteTest, AbortedTransaction) {
 TEST_F(SqliteTest, AbortedByExceptionTransaction) {
   this->CreateTable();
   {
-    SqliteTransaction trans(this->db);
+    SqliteTransaction trans(this->db_);
     this->InsertValues();
     // SqliteTransaction is automatically destroyed like in an exception.
   }

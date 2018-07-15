@@ -4,16 +4,16 @@
 #include <exception>
 #include <string>
 
-struct fs_exception : std::exception {
-  fs_exception(int err, std::string const &operation)
-      : msg(fs_exception::msg_from_errno(err, operation)) {}
-  ~fs_exception() noexcept override = default;
-  char const *what() const noexcept override { return msg.c_str(); }
+struct FsException : std::exception {
+  FsException(int err, std::string const &operation)
+      : msg_(FsException::MsgFromErrno(err, operation)) {}
+  ~FsException() noexcept override = default;
+  char const *what() const noexcept override { return msg_.c_str(); }
 
 private:
-  static std::string msg_from_errno(int err, std::string const &operation);
+ static std::string MsgFromErrno(int err, std::string const &operation);
 
-  std::string msg;
+ std::string msg_;
 };
 
 #endif // SRC_EXCEPTIONS_H_

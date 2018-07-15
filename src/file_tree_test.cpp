@@ -119,9 +119,9 @@ TEST(NodeTest, GetPossibleEquivalents) {
 }
 
 struct NodeGatherer {
-  void OnNode(Node *node) { nodes.push_back(node); }
+  void OnNode(Node *node) { nodes_.push_back(node); }
 
-  Nodes nodes;
+  Nodes nodes_;
 };
 
 TEST(NodeTest, Traverse) {
@@ -143,8 +143,8 @@ TEST(NodeTest, Traverse) {
   NodeGatherer gatherer;
   n1.Traverse(std::bind(&NodeGatherer::OnNode, std::ref(gatherer),
                         std::placeholders::_1));
-  std::sort(gatherer.nodes.begin(), gatherer.nodes.end());
-  ASSERT_EQ(gatherer.nodes, expected);
+  std::sort(gatherer.nodes_.begin(), gatherer.nodes_.end());
+  ASSERT_EQ(gatherer.nodes_, expected);
 }
 
 TEST(NodeTest, AncestorTestIndependentFiles) {
@@ -234,13 +234,13 @@ TEST(NodeWeight, MultipleFiles) {
   ASSERT_DOUBLE_EQ(n.GetWeight(), 3);
 }
 
-TEST(EqClassWeight, Empty) { ASSERT_DOUBLE_EQ(EqClass().weight, 0); }
+TEST(EqClassWeight, Empty) { ASSERT_DOUBLE_EQ(EqClass().weight_, 0); }
 
 TEST(EqClassWeight, SingleNode) {
   EqClass eq_class;
   Node n(Node::FILE, "abc");
   eq_class.AddNode(n);
-  ASSERT_DOUBLE_EQ(eq_class.weight, 1);
+  ASSERT_DOUBLE_EQ(eq_class.weight_, 1);
 }
 
 TEST(EqClassWeight, Simple) {
@@ -258,7 +258,7 @@ TEST(EqClassWeight, Simple) {
   ASSERT_DOUBLE_EQ(n.GetWeight(), 2);
   EqClass top_class;
   top_class.AddNode(n);
-  ASSERT_DOUBLE_EQ(top_class.weight, 2);
+  ASSERT_DOUBLE_EQ(top_class.weight_, 2);
 }
 
 TEST(EqClassWeight, AvgWorks) {
@@ -270,14 +270,14 @@ TEST(EqClassWeight, AvgWorks) {
   ASSERT_DOUBLE_EQ(n3.first->GetWeight(), 11);
   EqClass eq_class;
   eq_class.AddNode(*n1.first);
-  ASSERT_DOUBLE_EQ(eq_class.weight, 3);
+  ASSERT_DOUBLE_EQ(eq_class.weight_, 3);
   eq_class.AddNode(*n2.first);
-  ASSERT_DOUBLE_EQ(eq_class.weight, 5);
+  ASSERT_DOUBLE_EQ(eq_class.weight_, 5);
   ASSERT_DOUBLE_EQ(n1.first->GetWeight(), 5);
   ASSERT_DOUBLE_EQ(n2.first->GetWeight(), 5);
   ASSERT_DOUBLE_EQ(n3.first->GetWeight(), 11);
   eq_class.AddNode(*n3.first);
-  ASSERT_DOUBLE_EQ(eq_class.weight, 7);
+  ASSERT_DOUBLE_EQ(eq_class.weight_, 7);
   ASSERT_DOUBLE_EQ(n1.first->GetWeight(), 7);
   ASSERT_DOUBLE_EQ(n2.first->GetWeight(), 7);
   ASSERT_DOUBLE_EQ(n3.first->GetWeight(), 7);

@@ -59,7 +59,7 @@ void DumpFuzzyDedupRes(SqliteConnection &db, FuzzyDedupRes const &res) {
   res.first->Traverse([&](Node const *n) {
     node_out->Write(
         reinterpret_cast<uintptr_t>(n), n->GetName(), n->BuildPath().native(),
-        (n->GetType() == Node::FILE) ? "FILE" : "DIR", n->unique_fraction,
+        (n->GetType() == Node::FILE) ? "FILE" : "DIR", n->unique_fraction_,
         reinterpret_cast<uintptr_t>(&n->GetEqClass()));
   });
   trans.Commit();

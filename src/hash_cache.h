@@ -13,46 +13,46 @@
 
 #include "sql_lib.h"
 
-using cksum = uint64_t;
+using Cksum = uint64_t;
 
-struct file_info {
-  file_info() = default;
-  file_info(off_t size, time_t mtime, cksum sum)
-      : size(size), mtime(mtime), sum(sum) {}
+struct FileInfo {
+  FileInfo() = default;
+  FileInfo(off_t size, time_t mtime, Cksum sum)
+      : size_(size), mtime_(mtime), sum_(sum) {}
 
-  off_t size;
-  time_t mtime;
-  cksum sum;
+  off_t size_;
+  time_t mtime_;
+  Cksum sum_;
 };
 
-std::unordered_map<std::string, file_info>
-read_cache_from_db(std::string const &path);
+std::unordered_map<std::string, FileInfo> ReadCacheFromDb(
+    std::string const &path);
 
-class hash_cache {
-public:
-  struct initializer {
-    initializer(std::string const &read_cache_from,
+class HashCache {
+ public:
+  struct Initializer {
+    Initializer(std::string const &read_cache_from,
                 std::string const &dump_cache_to);
-    ~initializer();
+    ~Initializer();
   };
-  static hash_cache &get();
-  file_info operator()(boost::filesystem::path const &p);
+  static HashCache &Get();
+  FileInfo operator()(boost::filesystem::path const &p);
 
-private:
-  hash_cache(std::string const &read_cache_from,
-             std::string const &dump_cache_to);
-  ~hash_cache();
-  void store_cksums();
-  static void initialize(std::string const &read_cache_from,
+ private:
+  HashCache(std::string const &read_cache_from,
+            std::string const &dump_cache_to);
+  ~HashCache();
+  void StoreCksums();
+  static void Initialize(std::string const &read_cache_from,
                          std::string const &dump_cache_to);
-  static void finalize();
+  static void Finalize();
 
-  static hash_cache *instance;
+  static HashCache *instance_;
 
-  using cache_map = std::unordered_map<std::string, file_info>;
-  cache_map cache;
-  std::unique_ptr<SqliteConnection> db;
-  std::mutex mutex;
+  using CacheMap = std::unordered_map<std::string, FileInfo>;
+  CacheMap cache_;
+  std::unique_ptr<SqliteConnection> db_;
+  std::mutex mutex_;
 };
 
 #endif // SRC_HASH_CACHE_H_

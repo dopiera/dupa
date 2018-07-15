@@ -8,7 +8,8 @@
 struct Node;
 using NodePtr = std::shared_ptr<Node>;
 
-template <class T> typename T::value_type nth(T const &t, size_t n) {
+template <class T>
+typename T::value_type Nth(T const &t, size_t n) {
   auto it = t.begin();
   assert(it != t.end());
   for (size_t i = 0; i < n; ++i) {
@@ -23,21 +24,21 @@ struct NodePtrComparator {
 };
 
 struct Node {
-  explicit Node(std::string name) : name(std::move(name)) {}
+  explicit Node(std::string name) : name_(std::move(name)) {}
   virtual ~Node() = default;
 
   virtual bool IsFile() const { return !IsDir(); }
   virtual bool IsDir() const = 0;
 
-  size_t Size() const { return entries.size(); }
-  NodePtr nth(size_t idx) const { return ::nth(entries, idx); }
+  size_t Size() const { return entries_.size(); }
+  NodePtr Nth(size_t idx) const { return ::Nth(entries_, idx); }
 
-  std::string name;
-  std::set<NodePtr, NodePtrComparator> entries;
+  std::string name_;
+  std::set<NodePtr, NodePtrComparator> entries_;
 };
 
 bool NodePtrComparator::operator()(const NodePtr &n1, const NodePtr &n2) const {
-  return n1->name < n2->name;
+  return n1->name_ < n2->name_;
 }
 
 struct File : public Node {
@@ -52,41 +53,41 @@ struct Dir : public Node {
 
 struct TestProcessor : public ScanProcessor<NodePtr> {
   void File(boost::filesystem::path const &path, NodePtr const &parent,
-            file_info const & /*f_info*/) override {
-    parent->entries.insert(NodePtr(new ::File(path.native())));
+            FileInfo const & /*f_info*/) override {
+    parent->entries_.insert(NodePtr(new ::File(path.native())));
   }
 
   NodePtr RootDir(boost::filesystem::path const &path) override {
-    root.reset(new ::Dir(path.native()));
-    return root;
+    root_.reset(new ::Dir(path.native()));
+    return root_;
   }
 
   NodePtr Dir(boost::filesystem::path const &path,
               NodePtr const &parent) override {
     NodePtr n(new ::Dir(path.native()));
-    parent->entries.insert(n);
+    parent->entries_.insert(n);
     return n;
   }
 
-  NodePtr root;
+  NodePtr root_;
 };
 
 TEST(DbImport, OneFile) {
-  file_info const fi(1, 2, 3);
+  FileInfo const fi(1, 2, 3);
   TestProcessor p;
   ScanDb(
       {
           {"/ala/ma/kota", fi},
       },
       p);
-  ASSERT_TRUE(p.root->IsDir());
-  ASSERT_EQ(p.root->name, "/ala/ma");
-  ASSERT_EQ(p.root->entries.size(), 1U);
-  ASSERT_EQ((*p.root->entries.begin())->name, "kota");
+  ASSERT_TRUE(p.root_->IsDir());
+  ASSERT_EQ(p.root_->name_, "/ala/ma");
+  ASSERT_EQ(p.root_->entries_.size(), 1U);
+  ASSERT_EQ((*p.root_->entries_.begin())->name_, "kota");
 }
 
 TEST(DbImport, RootPrefix) {
-  file_info const fi(1, 2, 3);
+  FileInfo const fi(1, 2, 3);
   TestProcessor p;
   ScanDb(
       {
@@ -94,27 +95,27 @@ TEST(DbImport, RootPrefix) {
           {"/bob/ma/kota", fi},
       },
       p);
-  ASSERT_TRUE(p.root->IsDir());
-  ASSERT_EQ(p.root->name, "/");
-  ASSERT_EQ(p.root->Size(), 2U);
-  NodePtr const ala = p.root->nth(0);
-  NodePtr const bob = p.root->nth(1);
-  ASSERT_EQ(ala->name, "ala");
+  ASSERT_TRUE(p.root_->IsDir());
+  ASSERT_EQ(p.root_->name_, "/");
+  ASSERT_EQ(p.root_->Size(), 2U);
+  NodePtr const ala = p.root_->Nth(0);
+  NodePtr const bob = p.root_->Nth(1);
+  ASSERT_EQ(ala->name_, "ala");
   ASSERT_EQ(ala->Size(), 1U);
-  ASSERT_EQ(ala->nth(0)->name, "ma");
-  ASSERT_EQ(ala->nth(0)->Size(), 1U);
-  ASSERT_TRUE(ala->nth(0)->nth(0)->IsFile());
-  ASSERT_EQ(ala->nth(0)->nth(0)->name, "kota");
-  ASSERT_EQ(bob->name, "bob");
+  ASSERT_EQ(ala->Nth(0)->name_, "ma");
+  ASSERT_EQ(ala->Nth(0)->Size(), 1U);
+  ASSERT_TRUE(ala->Nth(0)->Nth(0)->IsFile());
+  ASSERT_EQ(ala->Nth(0)->Nth(0)->name_, "kota");
+  ASSERT_EQ(bob->name_, "bob");
   ASSERT_EQ(bob->Size(), 1U);
-  ASSERT_EQ(bob->nth(0)->name, "ma");
-  ASSERT_EQ(bob->nth(0)->Size(), 1U);
-  ASSERT_TRUE(bob->nth(0)->nth(0)->IsFile());
-  ASSERT_EQ(bob->nth(0)->nth(0)->name, "kota");
+  ASSERT_EQ(bob->Nth(0)->name_, "ma");
+  ASSERT_EQ(bob->Nth(0)->Size(), 1U);
+  ASSERT_TRUE(bob->Nth(0)->Nth(0)->IsFile());
+  ASSERT_EQ(bob->Nth(0)->Nth(0)->name_, "kota");
 }
 
 TEST(DbImport, EmptyPrefix) {
-  file_info const fi(1, 2, 3);
+  FileInfo const fi(1, 2, 3);
   TestProcessor p;
   ScanDb(
       {
@@ -122,27 +123,27 @@ TEST(DbImport, EmptyPrefix) {
           {"bob/ma/kota", fi},
       },
       p);
-  ASSERT_TRUE(p.root->IsDir());
-  ASSERT_EQ(p.root->name, "");
-  ASSERT_EQ(p.root->Size(), 2U);
-  NodePtr const ala = p.root->nth(0);
-  NodePtr const bob = p.root->nth(1);
-  ASSERT_EQ(ala->name, "ala");
+  ASSERT_TRUE(p.root_->IsDir());
+  ASSERT_EQ(p.root_->name_, "");
+  ASSERT_EQ(p.root_->Size(), 2U);
+  NodePtr const ala = p.root_->Nth(0);
+  NodePtr const bob = p.root_->Nth(1);
+  ASSERT_EQ(ala->name_, "ala");
   ASSERT_EQ(ala->Size(), 1U);
-  ASSERT_EQ(ala->nth(0)->name, "ma");
-  ASSERT_EQ(ala->nth(0)->Size(), 1U);
-  ASSERT_TRUE(ala->nth(0)->nth(0)->IsFile());
-  ASSERT_EQ(ala->nth(0)->nth(0)->name, "kota");
-  ASSERT_EQ(bob->name, "bob");
+  ASSERT_EQ(ala->Nth(0)->name_, "ma");
+  ASSERT_EQ(ala->Nth(0)->Size(), 1U);
+  ASSERT_TRUE(ala->Nth(0)->Nth(0)->IsFile());
+  ASSERT_EQ(ala->Nth(0)->Nth(0)->name_, "kota");
+  ASSERT_EQ(bob->name_, "bob");
   ASSERT_EQ(bob->Size(), 1U);
-  ASSERT_EQ(bob->nth(0)->name, "ma");
-  ASSERT_EQ(bob->nth(0)->Size(), 1U);
-  ASSERT_TRUE(bob->nth(0)->nth(0)->IsFile());
-  ASSERT_EQ(bob->nth(0)->nth(0)->name, "kota");
+  ASSERT_EQ(bob->Nth(0)->name_, "ma");
+  ASSERT_EQ(bob->Nth(0)->Size(), 1U);
+  ASSERT_TRUE(bob->Nth(0)->Nth(0)->IsFile());
+  ASSERT_EQ(bob->Nth(0)->Nth(0)->name_, "kota");
 }
 
 TEST(DbImport, NontrivialPrefix) {
-  file_info const fi(1, 2, 3);
+  FileInfo const fi(1, 2, 3);
   TestProcessor p;
   ScanDb(
       {
@@ -150,19 +151,19 @@ TEST(DbImport, NontrivialPrefix) {
           {"ala/ma/psa", fi},
       },
       p);
-  ASSERT_TRUE(p.root->IsDir());
-  ASSERT_EQ(p.root->name, "ala/ma");
-  ASSERT_EQ(p.root->Size(), 2U);
-  NodePtr const ala = p.root->nth(0);
-  NodePtr const bob = p.root->nth(1);
+  ASSERT_TRUE(p.root_->IsDir());
+  ASSERT_EQ(p.root_->name_, "ala/ma");
+  ASSERT_EQ(p.root_->Size(), 2U);
+  NodePtr const ala = p.root_->Nth(0);
+  NodePtr const bob = p.root_->Nth(1);
   ASSERT_TRUE(ala->IsFile());
-  ASSERT_EQ(ala->name, "kota");
+  ASSERT_EQ(ala->name_, "kota");
   ASSERT_TRUE(bob->IsFile());
-  ASSERT_EQ(bob->name, "psa");
+  ASSERT_EQ(bob->name_, "psa");
 }
 
 TEST(DbImport, NontrivialAbsolutePrefix) {
-  file_info const fi(1, 2, 3);
+  FileInfo const fi(1, 2, 3);
   TestProcessor p;
   ScanDb(
       {
@@ -170,19 +171,19 @@ TEST(DbImport, NontrivialAbsolutePrefix) {
           {"/ala/ma/psa", fi},
       },
       p);
-  ASSERT_TRUE(p.root->IsDir());
-  ASSERT_EQ(p.root->name, "/ala/ma");
-  ASSERT_EQ(p.root->Size(), 2U);
-  NodePtr const ala = p.root->nth(0);
-  NodePtr const bob = p.root->nth(1);
+  ASSERT_TRUE(p.root_->IsDir());
+  ASSERT_EQ(p.root_->name_, "/ala/ma");
+  ASSERT_EQ(p.root_->Size(), 2U);
+  NodePtr const ala = p.root_->Nth(0);
+  NodePtr const bob = p.root_->Nth(1);
   ASSERT_TRUE(ala->IsFile());
-  ASSERT_EQ(ala->name, "kota");
+  ASSERT_EQ(ala->name_, "kota");
   ASSERT_TRUE(bob->IsFile());
-  ASSERT_EQ(bob->name, "psa");
+  ASSERT_EQ(bob->name_, "psa");
 }
 
 TEST(DbImport, ComplexTest) {
-  file_info const fi(1, 2, 3);
+  FileInfo const fi(1, 2, 3);
   TestProcessor p;
   ScanDb(
       {
@@ -191,19 +192,19 @@ TEST(DbImport, ComplexTest) {
           {"/ala/ma/malego/kota", fi},
       },
       p);
-  ASSERT_TRUE(p.root->IsDir());
-  ASSERT_EQ(p.root->name, "/ala/ma");
-  ASSERT_EQ(p.root->Size(), 2U);
-  NodePtr const big = p.root->nth(0);
-  NodePtr const small = p.root->nth(1);
+  ASSERT_TRUE(p.root_->IsDir());
+  ASSERT_EQ(p.root_->name_, "/ala/ma");
+  ASSERT_EQ(p.root_->Size(), 2U);
+  NodePtr const big = p.root_->Nth(0);
+  NodePtr const small = p.root_->Nth(1);
   ASSERT_TRUE(big->IsDir());
-  ASSERT_EQ(big->name, "duzego");
+  ASSERT_EQ(big->name_, "duzego");
   ASSERT_EQ(big->Size(), 2U);
-  ASSERT_EQ(big->nth(0)->name, "kota");
-  ASSERT_EQ(big->nth(1)->name, "psa");
+  ASSERT_EQ(big->Nth(0)->name_, "kota");
+  ASSERT_EQ(big->Nth(1)->name_, "psa");
   ASSERT_TRUE(small->IsDir());
-  ASSERT_EQ(small->name, "malego");
+  ASSERT_EQ(small->name_, "malego");
   ASSERT_EQ(small->Size(), 1U);
-  ASSERT_EQ(small->nth(0)->name, "kota");
-  ASSERT_EQ(small->nth(0)->name, "kota");
+  ASSERT_EQ(small->Nth(0)->name_, "kota");
+  ASSERT_EQ(small->Nth(0)->name_, "kota");
 }

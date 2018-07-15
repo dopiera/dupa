@@ -8,19 +8,19 @@
 #include <unordered_map>
 
 #include "file_tree.h"
-#include "hash_cache.h" // for cksum
+#include "hash_cache.h" // for Cksum
 
 using EqClasses = std::vector<std::unique_ptr<EqClass>>;
 using EqClassesPtr = std::shared_ptr<EqClasses>;
 using FuzzyDedupRes = std::pair<std::shared_ptr<Node>, EqClassesPtr>;
 
-FuzzyDedupRes fuzzy_dedup(std::string const &dir);
+FuzzyDedupRes FuzzyDedup(std::string const &dir);
 std::vector<EqClass *> GetInteresingEqClasses(FuzzyDedupRes &all);
 
 // This shouldn't be public but is for testing.
 namespace detail {
 
-using Sum2Node = std::unordered_multimap<cksum, Node *>;
+using Sum2Node = std::unordered_multimap<Cksum, Node *>;
 
 // Recursively scan directory dir. Return the directory's hierarchy and a
 // multimap from checksums to Nodes in the hierarchy for all regular files.

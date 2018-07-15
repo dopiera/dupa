@@ -7,29 +7,30 @@
 
 #include "hash_cache.h" // for cksum
 
-// DirHandle can be whatever provided that it has proper value semantics.
-template <class DirHandle> struct ScanProcessor {
+// DIR_HANDLE can be whatever provided that it has proper value semantics.
+template <class DIR_HANDLE>
+struct ScanProcessor {
   virtual void File(boost::filesystem::path const &path,
-                    DirHandle const &parent, file_info const &f_info) = 0;
-  virtual DirHandle RootDir(boost::filesystem::path const &path) = 0;
-  virtual DirHandle Dir(boost::filesystem::path const &path,
-                        DirHandle const &parent) = 0;
+                    DIR_HANDLE const &parent, FileInfo const &f_info) = 0;
+  virtual DIR_HANDLE RootDir(boost::filesystem::path const &path) = 0;
+  virtual DIR_HANDLE Dir(boost::filesystem::path const &path,
+                         DIR_HANDLE const &parent) = 0;
   virtual ~ScanProcessor() = default;
 };
 
 // Will scan directory root and call appropriate methods of ScanProcessor. They
 // will be called from multiple threads, but one at a time (serialized).
-template <class DirHandle>
+template <class DIR_HANDLE>
 void ScanDirectory(boost::filesystem::path const &root,
-                   ScanProcessor<DirHandle> &processor);
+                   ScanProcessor<DIR_HANDLE> &processor);
 
-template <class DirHandle>
+template <class DIR_HANDLE>
 void ScanDb(boost::filesystem::path const &db_path,
-            ScanProcessor<DirHandle> &processor);
+            ScanProcessor<DIR_HANDLE> &processor);
 
 // Will call one of the 2 above.
-template <class DirHandle>
+template <class DIR_HANDLE>
 void ScanDirectoryOrDb(std::string const &path,
-                       ScanProcessor<DirHandle> &processor);
+                       ScanProcessor<DIR_HANDLE> &processor);
 
 #endif // SRC_SCANNER_H_

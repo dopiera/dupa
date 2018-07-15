@@ -34,7 +34,7 @@ public:
     return cur_node;
   }
 
-  cksum EqClass2Cksum(std::string const &eq_class) {
+  Cksum EqClass2Cksum(std::string const &eq_class) {
     auto res = class_cksums_.insert(std::make_pair(eq_class, unused_cksum_));
     if (res.second) {
       ++unused_cksum_;
@@ -108,10 +108,10 @@ protected:
   void TearDown() override {}
 
   std::unordered_map<std::string, Node *> nodes_;
-  std::unordered_map<std::string, cksum> class_cksums_;
+  std::unordered_map<std::string, Cksum> class_cksums_;
   detail::Sum2Node sum2node_;
   std::shared_ptr<Node> root_node_;
-  cksum unused_cksum_{};
+  Cksum unused_cksum_{};
   FuzzyDedupRes res_;
 };
 
@@ -159,7 +159,7 @@ TEST_F(FuzzyDedupTest, ScatteredDir) {
   AddFile("4", "v/d", 1);
 
   Execute();
-  ASSERT_DOUBLE_EQ(FindNode("/v")->unique_fraction, 0);
+  ASSERT_DOUBLE_EQ(FindNode("/v")->unique_fraction_, 0);
 }
 
 TEST_F(FuzzyDedupTest, UniqueDir) {
@@ -174,7 +174,7 @@ TEST_F(FuzzyDedupTest, UniqueDir) {
   AddFile("8", "v/d", 1);
 
   Execute();
-  ASSERT_DOUBLE_EQ(FindNode("/v")->unique_fraction, 1);
+  ASSERT_DOUBLE_EQ(FindNode("/v")->unique_fraction_, 1);
 }
 
 TEST_F(FuzzyDedupTest, MostlyScatteredDir) {
@@ -189,5 +189,5 @@ TEST_F(FuzzyDedupTest, MostlyScatteredDir) {
   AddFile("5", "v/d", 1);
 
   Execute();
-  ASSERT_DOUBLE_EQ(FindNode("/v")->unique_fraction, .25);
+  ASSERT_DOUBLE_EQ(FindNode("/v")->unique_fraction_, .25);
 }

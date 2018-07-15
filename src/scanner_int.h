@@ -17,25 +17,25 @@
 
 namespace detail {
 
-boost::filesystem::path common_path_prefix(boost::filesystem::path const &p1,
-                                           boost::filesystem::path const &p2);
+boost::filesystem::path CommonPathPrefix(boost::filesystem::path const &p1,
+                                         boost::filesystem::path const &p2);
 
 } // namespace detail
 
-template <class DirHandle>
+template <class DIR_HANDLE>
 void ScanDirectory(boost::filesystem::path const &root,
-                   ScanProcessor<DirHandle> &processor) {
+                   ScanProcessor<DIR_HANDLE> &processor) {
   using boost::filesystem::path;
 
-  std::stack<std::pair<path, DirHandle>> dirs_to_process;
+  std::stack<std::pair<path, DIR_HANDLE>> dirs_to_process;
   dirs_to_process.push(std::make_pair(root, processor.RootDir(root)));
 
-  SyncThreadPool pool(Conf().concurrency);
+  SyncThreadPool pool(Conf().concurrency_);
   std::mutex mutex;
 
   while (!dirs_to_process.empty()) {
     path const dir = dirs_to_process.top().first;
-    DirHandle const handle = dirs_to_process.top().second;
+    DIR_HANDLE const handle = dirs_to_process.top().second;
 
     dirs_to_process.pop();
 
@@ -52,8 +52,8 @@ void ScanDirectory(boost::filesystem::path const &root,
       }
       if (boost::filesystem::is_regular(new_path)) {
         pool.Submit([new_path, handle, &mutex, &processor]() mutable {
-          file_info const f_info = hash_cache::get()(new_path);
-          if (f_info.sum) {
+          FileInfo const f_info = HashCache::Get()(new_path);
+          if (f_info.sum_) {
             std::lock_guard<std::mutex> lock(mutex);
             processor.File(new_path, handle, f_info);
           }
@@ -63,9 +63,9 @@ void ScanDirectory(boost::filesystem::path const &root,
   }
 }
 
-template <class DirHandle>
-void ScanDb(std::unordered_map<std::string, file_info> db,
-            ScanProcessor<DirHandle> &processor) {
+template <class DIR_HANDLE>
+void ScanDb(std::unordered_map<std::string, FileInfo> db,
+            ScanProcessor<DIR_HANDLE> &processor) {
   using boost::filesystem::path;
 
   if (db.empty()) {
@@ -74,13 +74,13 @@ void ScanDb(std::unordered_map<std::string, file_info> db,
 
   path common_prefix = path(db.begin()->first).parent_path();
   for (auto const &path_and_fi : db) {
-    common_prefix = detail::common_path_prefix(
+    common_prefix = detail::CommonPathPrefix(
         common_prefix, path(path_and_fi.first).parent_path());
   }
   size_t const prefix_len =
       std::distance(common_prefix.begin(), common_prefix.end());
 
-  std::map<path, DirHandle> created_dirs;
+  std::map<path, DIR_HANDLE> created_dirs;
   created_dirs[common_prefix] = processor.RootDir(common_prefix);
   for (auto const &path_and_fi : db) {
     LOG(INFO, path_and_fi.first);
@@ -93,7 +93,7 @@ void ScanDb(std::unordered_map<std::string, file_info> db,
     }
 
     path parent = common_prefix;
-    DirHandle parent_handle = created_dirs[common_prefix];
+    DIR_HANDLE parent_handle = created_dirs[common_prefix];
 
     for (; it != dir.end(); ++it) {
       path const to_insert = parent / *it;
@@ -111,21 +111,21 @@ void ScanDb(std::unordered_map<std::string, file_info> db,
   }
 }
 
-template <class DirHandle>
+template <class DIR_HANDLE>
 void ScanDb(boost::filesystem::path const &db_path,
-            ScanProcessor<DirHandle> &processor) {
+            ScanProcessor<DIR_HANDLE> &processor) {
   using boost::filesystem::path;
 
-  auto db = read_cache_from_db(db_path.native());
+  auto db = ReadCacheFromDb(db_path.native());
   ScanDb(db, processor);
 }
 
 // Will call one of the 2 above.
-template <class DirHandle>
+template <class DIR_HANDLE>
 void ScanDirectoryOrDb(std::string const &path,
-                       ScanProcessor<DirHandle> &processor) {
+                       ScanProcessor<DIR_HANDLE> &processor) {
   std::string const db_prefix = "db:";
-  if (!Conf().ignore_db_prefix && path.find(db_prefix) == 0) {
+  if (!Conf().ignore_db_prefix_ && path.find(db_prefix) == 0) {
     ScanDb(boost::filesystem::path(path.substr(db_prefix.length())), processor);
   } else {
     ScanDirectory(path, processor);

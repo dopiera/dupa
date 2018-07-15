@@ -15,7 +15,7 @@
 #include "scanner_int.h"
 #include "synch_thread_pool.h"
 
-FuzzyDedupRes fuzzy_dedup(std::string const &dir) {
+FuzzyDedupRes FuzzyDedup(std::string const &dir) {
   // Scan the directory and compute checksums for regular files
   std::pair<Node *, detail::Sum2Node> const root_and_sum_2_node =
       detail::ScanDirectory(dir);
@@ -56,12 +56,12 @@ FuzzyDedupRes fuzzy_dedup(std::string const &dir) {
 std::vector<EqClass *> GetInteresingEqClasses(FuzzyDedupRes &all) {
   std::vector<EqClass *> res;
   for (auto &eq_class : *all.second) {
-    assert(!eq_class->nodes.empty());
-    if (eq_class->nodes.size() == 1) {
+    assert(!eq_class->nodes_.empty());
+    if (eq_class->nodes_.size() == 1) {
       continue;
     }
     bool all_parents_are_dups = true;
-    for (Node *node : eq_class->nodes) {
+    for (Node *node : eq_class->nodes_) {
       if (node->GetParent() == nullptr ||
           node->GetParent()->GetEqClass().IsSingle()) {
         all_parents_are_dups = false;
@@ -81,10 +81,10 @@ namespace detail {
 
 struct TreeCtorProcessor : public ScanProcessor<Node *> {
   void File(boost::filesystem::path const &path, Node *const &parent,
-            file_info const &f_info) override {
-    Node *node = new Node(Node::FILE, path.filename().native(), f_info.size);
+            FileInfo const &f_info) override {
+    Node *node = new Node(Node::FILE, path.filename().native(), f_info.size_);
     parent->AddChild(node);
-    sum2node_.insert(std::make_pair(f_info.sum, node));
+    sum2node_.insert(std::make_pair(f_info.sum_, node));
   }
 
   Node *RootDir(boost::filesystem::path const &path) override {
@@ -119,14 +119,14 @@ std::pair<Node *, Sum2Node> ScanDirectory(std::string const &dir) {
 namespace {
 
 struct EmptyDirsEqClassFill {
-  EmptyDirsEqClassFill() : eq_class(new EqClass) {}
+  EmptyDirsEqClassFill() : eq_class_(new EqClass) {}
 
   void OnNode(Node *node) {
     if (node->IsEmptyDir()) {
-      eq_class->AddNode(*node);
+      eq_class_->AddNode(*node);
     }
   }
-  std::unique_ptr<EqClass> eq_class;
+  std::unique_ptr<EqClass> eq_class_;
 };
 
 } /* anonymous namespace */
@@ -136,7 +136,7 @@ std::unique_ptr<EqClass> ClassifyEmptyDirs(Node &node) {
   node.Traverse(std::bind(&EmptyDirsEqClassFill::OnNode,
                           std::ref(empty_dir_classifier),
                           std::placeholders::_1));
-  return std::move(empty_dir_classifier.eq_class);
+  return std::move(empty_dir_classifier.eq_class_);
 }
 
 //======== ClassifyDuplicateFiles ==============================================
@@ -167,10 +167,10 @@ namespace {
 struct GatherReadyToEval {
   void OnNode(Node *node) {
     if (node->IsReadyToEvaluate() && !node->IsEvaluated()) {
-      ready_to_evaluate.push(node);
+      ready_to_evaluate_.push(node);
     }
   }
-  std::queue<Node *> ready_to_evaluate;
+  std::queue<Node *> ready_to_evaluate_;
 };
 
 } /* anonymous namespace */
@@ -179,7 +179,7 @@ std::queue<Node *> GetNodesReadyToEval(Node &node) {
   GatherReadyToEval gathered;
   node.Traverse(std::bind(&GatherReadyToEval::OnNode, std::ref(gathered),
                           std::placeholders::_1));
-  return gathered.ready_to_evaluate;
+  return gathered.ready_to_evaluate_;
 }
 
 //======== GetClosestNode ======================================================
@@ -223,7 +223,7 @@ void PropagateEquivalence(Node &root_node, const EqClassesPtr &eq_classes) {
       std::pair<Node *, double> min_elem_and_dist =
           detail::GetClosestNode(*node, possible_equivalents);
       assert(min_elem_and_dist.first);
-      if (min_elem_and_dist.second < Conf().tolerable_diff_pct / 100.) {
+      if (min_elem_and_dist.second < Conf().tolerable_diff_pct_ / 100.) {
         min_elem_and_dist.first->GetEqClass().AddNode(*node);
       } else {
         eq_classes->push_back(std::make_unique<EqClass>());
@@ -252,7 +252,7 @@ void SortEqClasses(const EqClassesPtr &eq_classes) {
   std::sort(
       eq_classes->begin(), eq_classes->end(),
       [](const std::unique_ptr<EqClass> &a, const std::unique_ptr<EqClass> &b) {
-        return a->weight > b->weight;
+        return a->weight_ > b->weight_;
       });
 }
 
@@ -264,7 +264,7 @@ bool HasDuplicateElsewhere(Node const &n,
                            std::unordered_set<Node const *> const &not_here) {
   // FIXME: perhaps it's worth sorting nodes in EqClasses and doing a binary
   // search here. I'll not do premature optimizations, though.
-  for (Node *sibling : n.GetEqClass().nodes) {
+  for (Node *sibling : n.GetEqClass().nodes_) {
     if (not_here.find(sibling) == not_here.end()) {
       return true;
     }
@@ -278,7 +278,7 @@ CNodes CalculateUniqueness(Node &node) {
   assert(node.IsEvaluated());
   switch (node.GetType()) {
   case Node::FILE:
-    node.unique_fraction = node.GetEqClass().IsSingle() ? 1 : 0;
+    node.unique_fraction_ = node.GetEqClass().IsSingle() ? 1 : 0;
     return CNodes(1, &node);
   case Node::DIR:
     std::unordered_set<Node const *> descendant_nodes;
@@ -295,7 +295,7 @@ CNodes CalculateUniqueness(Node &node) {
         unique_weight += desc->GetWeight();
       }
     }
-    node.unique_fraction = (total_weight == 0)
+    node.unique_fraction_ = (total_weight == 0)
                                ? 0 // empty directory is not unique
                                : (unique_weight / total_weight);
     return CNodes(descendant_nodes.begin(), descendant_nodes.end());

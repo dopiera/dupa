@@ -16,7 +16,8 @@
 
 namespace detail {
 
-template <typename C, class Enabled = void> struct SqliteBind1 {
+template <typename C, class ENABLED = void>
+struct SqliteBind1 {
   static_assert(sizeof(C) == -1, "Don't know how to bind this type.");
   void operator()(sqlite3_stmt &s, int idx, C const &value);
 };
@@ -27,7 +28,7 @@ struct SqliteBind1<C,
   void operator()(sqlite3_stmt &s, int idx, C const &value) {
     int res = sqlite3_bind_int64(&s, idx, value);
     if (res != SQLITE_OK) {
-      throw sqlite_exception(res, "Binding parameter.");
+      throw SqliteException(res, "Binding parameter.");
     }
   }
 };
@@ -38,7 +39,7 @@ struct SqliteBind1<
   void operator()(sqlite3_stmt &s, int idx, C const &value) {
     int res = sqlite3_bind_double(&s, idx, value);
     if (res != SQLITE_OK) {
-      throw sqlite_exception(res, "Binding parameter.");
+      throw SqliteException(res, "Binding parameter.");
     }
   }
 };
@@ -54,20 +55,21 @@ template <> struct SqliteBind1<std::string> {
     int res = sqlite3_bind_text(&s, idx, mem, str.length(), free);
     if (res != SQLITE_OK) {
       free(mem);
-      throw sqlite_exception(res, "Binding parameter.");
+      throw SqliteException(res, "Binding parameter.");
     }
   }
 };
 
 inline void SqliteBindImpl(sqlite3_stmt & /*s*/, int /*idx*/) {}
 
-template <typename T, typename... Args>
-inline void SqliteBindImpl(sqlite3_stmt &s, int idx, T const &a, Args... args) {
+template <typename T, typename... ARGS>
+inline void SqliteBindImpl(sqlite3_stmt &s, int idx, T const &a, ARGS... args) {
   SqliteBind1<T>()(s, idx, a);
   SqliteBindImpl(s, idx + 1, args...);
 }
 
-template <typename C, typename Enabled = void> struct ExtractCell {
+template <typename C, typename ENABLED = void>
+struct ExtractCell {
   static_assert(sizeof(C) == -1, "Don't know how to extract this type.");
   C operator()(sqlite3_stmt &s, int idx);
 };
@@ -95,7 +97,8 @@ template <> struct ExtractCell<std::string> {
   }
 };
 
-template <typename... Args> struct ExtractImpl;
+template <typename... ARGS>
+struct ExtractImpl;
 
 template <> struct ExtractImpl<> {
   inline std::tuple<> operator()(sqlite3 & /*db*/, sqlite3_stmt & /*row*/,
@@ -104,8 +107,9 @@ template <> struct ExtractImpl<> {
   }
 };
 
-template <typename T, typename... Args> struct ExtractImpl<T, Args...> {
-  inline std::tuple<T, Args...> operator()(sqlite3 &db, sqlite3_stmt &row,
+template <typename T, typename... ARGS>
+struct ExtractImpl<T, ARGS...> {
+  inline std::tuple<T, ARGS...> operator()(sqlite3 &db, sqlite3_stmt &row,
                                            int idx) const {
     const T &t = ExtractCell<T>()(row, idx);
     const int err = sqlite3_errcode(&db);
@@ -114,82 +118,84 @@ template <typename T, typename... Args> struct ExtractImpl<T, Args...> {
       // there is a memory allocation failure. What's worse, otherwise,
       // the errcode is not set at all, so we need to compare to this
       // specific error code only.
-      throw sqlite_exception(&db, std::string("Extracting value (") +
-                                      std::to_string(idx) + ") from result");
+      throw SqliteException(&db, std::string("Extracting value (") +
+                                     std::to_string(idx) + ") from result");
     }
     return std::tuple_cat(std::tuple<T>(t),
-                          ExtractImpl<Args...>()(db, row, idx + 1));
+                          ExtractImpl<ARGS...>()(db, row, idx + 1));
   }
 };
 
-template <typename... Args>
-std::tuple<Args...> Extract(sqlite3 &db, sqlite3_stmt &row) {
-  return ExtractImpl<Args...>()(db, row, 0);
+template <typename... ARGS>
+std::tuple<ARGS...> Extract(sqlite3 &db, sqlite3_stmt &row) {
+  return ExtractImpl<ARGS...>()(db, row, 0);
 }
 
 // Reimplement C++14 index_sequence_for
 
-template <size_t... I> struct index_sequence {
-  using value_type = size_t;
-  static constexpr size_t size() { return sizeof...(I); }
+template <size_t... I>
+struct IndexSequence {
+  using ValueType = size_t;
+  static constexpr size_t Size() { return sizeof...(I); }
 };
 
 template <std::size_t N, std::size_t... I>
-struct build_index_impl : build_index_impl<N - 1, N - 1, I...> {};
+struct BuildIndexImpl : BuildIndexImpl<N - 1, N - 1, I...> {};
 template <std::size_t... I>
-struct build_index_impl<0, I...> : index_sequence<I...> {};
+struct BuildIndexImpl<0, I...> : IndexSequence<I...> {};
 
-template <class... Ts>
-struct index_sequence_for : build_index_impl<sizeof...(Ts)> {};
+template <class... TS>
+struct IndexSequenceFor : BuildIndexImpl<sizeof...(TS)> {};
 
 } /* namespace detail */
 
 //======== SqliteInputIt =======================================================
 
-template <typename... Args>
-const std::tuple<Args...> &SqliteInputIt<Args...>::operator*() const {
-  return this->value;
+template <typename... ARGS>
+const std::tuple<ARGS...> &SqliteInputIt<ARGS...>::operator*() const {
+  return this->value_;
 }
 
-template <typename... Args>
-const std::tuple<Args...> *SqliteInputIt<Args...>::operator->() const {
+template <typename... ARGS>
+const std::tuple<ARGS...> *SqliteInputIt<ARGS...>::operator->() const {
   return *(operator*());
 }
 
-template <typename... Args>
-SqliteInputIt<Args...> &SqliteInputIt<Args...>::operator++() {
-  assert(this->stream);
+template <typename... ARGS>
+SqliteInputIt<ARGS...> &SqliteInputIt<ARGS...>::operator++() {
+  assert(this->stream_);
   Fetch();
   return *this;
 }
 
-template <typename... Args>
-SqliteInputIt<Args...> SqliteInputIt<Args...>::operator++(int) {
-  assert(this->stream);
+template <typename... ARGS>
+SqliteInputIt<ARGS...> SqliteInputIt<ARGS...>::operator++(int) {
+  assert(this->stream_);
   SqliteInputIt tmp = *this;
   Fetch();
   return tmp;
 }
 
-template <typename... Args>
-bool SqliteInputIt<Args...>::operator==(const SqliteInputIt<Args...> &o) const {
-  if (this->stream) {
-    return this->stream == o.stream;
+template <typename... ARGS>
+bool SqliteInputIt<ARGS...>::operator==(const SqliteInputIt<ARGS...> &o) const {
+  if (this->stream_) {
+    return this->stream_ == o.stream_;
   }
-  return !o.stream;
+  return !o.stream_;
 }
 
-template <typename... Args>
-bool SqliteInputIt<Args...>::operator!=(const SqliteInputIt<Args...> &o) const {
+template <typename... ARGS>
+bool SqliteInputIt<ARGS...>::operator!=(const SqliteInputIt<ARGS...> &o) const {
   return !(*this == o);
 }
 
-template <typename... Args> void SqliteInputIt<Args...>::Fetch() {
-  if (this->stream) {
-    if (this->stream->Eof()) {
-      this->stream = nullptr;
+template <typename... ARGS>
+void SqliteInputIt<ARGS...>::Fetch() {
+  if (this->stream_) {
+    if (this->stream_->Eof()) {
+      this->stream_ = nullptr;
     } else {
-      this->value = stream->Read();
+      this->value_ = stream_->Read();
     }
   }
 }
@@ -197,112 +203,118 @@ template <typename... Args> void SqliteInputIt<Args...>::Fetch() {
 //======== SqliteOutputIt ======================================================
 
 // Helper for dispatching tuple's arguments to Write()
-template <typename... Args, size_t... I>
-inline void dispatch_impl(OutStream<Args...> &stream,
-                          const std::tuple<Args...> &t,
-                          detail::index_sequence<I...> /*unused*/) {
+template <typename... ARGS, size_t... I>
+inline void DispatchImpl(OutStream<ARGS...> &stream,
+                         const std::tuple<ARGS...> &t,
+                         detail::IndexSequence<I...> /*unused*/) {
   stream.Write(std::get<I>(t)...);
 }
 
-template <typename... Args>
-SqliteOutputIt<Args...> &SqliteOutputIt<Args...>::
-operator=(std::tuple<Args...> const &args) {
-  dispatch_impl(*this->stream, args, detail::index_sequence_for<Args...>());
+template <typename... ARGS>
+SqliteOutputIt<ARGS...> &SqliteOutputIt<ARGS...>::operator=(
+    std::tuple<ARGS...> const &args) {
+  DispatchImpl(*this->stream_, args, detail::IndexSequenceFor<ARGS...>());
   return *this;
 }
 
 //======== Misc ================================================================
 
-template <typename... Args> void SqliteBind(sqlite3_stmt &s, Args... args) {
+template <typename... ARGS>
+void SqliteBind(sqlite3_stmt &s, ARGS... args) {
   detail::SqliteBindImpl(s, 1, args...);
 }
 
 //======== SqliteConnection ====================================================
 
-template <typename... Args>
-InStreamHolder<Args...> SqliteConnection::Query(const std::string &sql) {
-  auto in_stream = std::shared_ptr<InStream<Args...>>(
-      new InStream<Args...>(*this, this->PrepareStmt(sql)));
-  return InStreamHolder<Args...>(in_stream);
+template <typename... ARGS>
+InStreamHolder<ARGS...> SqliteConnection::Query(const std::string &sql) {
+  auto in_stream = std::shared_ptr<InStream<ARGS...>>(
+      new InStream<ARGS...>(*this, this->PrepareStmt(sql)));
+  return InStreamHolder<ARGS...>(in_stream);
 }
 
-template <typename... Args>
-std::unique_ptr<OutStream<Args...>>
-SqliteConnection::BatchInsert(const std::string &sql) {
-  return std::unique_ptr<OutStream<Args...>>(
-      new OutStream<Args...>(*this, this->PrepareStmt(sql)));
+template <typename... ARGS>
+std::unique_ptr<OutStream<ARGS...>> SqliteConnection::BatchInsert(
+    const std::string &sql) {
+  return std::unique_ptr<OutStream<ARGS...>>(
+      new OutStream<ARGS...>(*this, this->PrepareStmt(sql)));
 }
 
 //======== InStream ============================================================
 
-template <typename... Args> void InStream<Args...>::Fetch() {
-  this->next_row.reset();
-  const int res = sqlite3_step(stmt.get());
+template <typename... ARGS>
+void InStream<ARGS...>::Fetch() {
+  this->next_row_.reset();
+  const int res = sqlite3_step(stmt_.get());
   switch (res) {
   case SQLITE_DONE:
-    this->stmt.reset();
+    this->stmt_.reset();
     break;
   case SQLITE_ROW:
-    this->next_row.reset(new std::tuple<Args...>(
-        detail::Extract<Args...>(*this->conn.db, *stmt)));
+    this->next_row_.reset(new std::tuple<ARGS...>(
+        detail::Extract<ARGS...>(*this->conn_.db_, *stmt_)));
     break;
     // Consider special handling of SQLITE_OK to indicate misuse
   default:
-    throw sqlite_exception(res, "Trying to read from stream.");
+    throw SqliteException(res, "Trying to read from stream.");
   }
 }
 
-template <typename... Args>
-InStream<Args...>::InStream(SqliteConnection &conn, StmtPtr &&stmt)
-    : conn(conn), stmt(std::move(stmt)) {
+template <typename... ARGS>
+InStream<ARGS...>::InStream(SqliteConnection &conn, StmtPtr &&stmt)
+    : conn_(conn), stmt_(std::move(stmt)) {
   Fetch();
 }
 
-template <typename... Args> std::tuple<Args...> InStream<Args...>::Read() {
-  std::unique_ptr<std::tuple<Args...>> res(std::move(this->next_row));
+template <typename... ARGS>
+std::tuple<ARGS...> InStream<ARGS...>::Read() {
+  std::unique_ptr<std::tuple<ARGS...>> res(std::move(this->next_row_));
   Fetch();
   return *res;
 }
 
-template <typename... Args> bool InStream<Args...>::Eof() const {
-  return !this->next_row;
+template <typename... ARGS>
+bool InStream<ARGS...>::Eof() const {
+  return !this->next_row_;
 }
 
-template <typename... Args> SqliteInputIt<Args...> InStream<Args...>::begin() {
-  return SqliteInputIt<Args...>(*this);
+template <typename... ARGS>
+SqliteInputIt<ARGS...> InStream<ARGS...>::begin() {  // NOLINT
+  return SqliteInputIt<ARGS...>(*this);
 }
 
-template <typename... Args> SqliteInputIt<Args...> InStream<Args...>::end() {
-  return SqliteInputIt<Args...>();
+template <typename... ARGS>
+SqliteInputIt<ARGS...> InStream<ARGS...>::end() {  // NOLINT
+  return SqliteInputIt<ARGS...>();
 }
 
 //======== OutStream ===========================================================
 
-template <typename... Args>
-OutStream<Args...>::OutStream(SqliteConnection &conn, detail::StmtPtr &&stmt)
-    : conn(conn), stmt(std::move(stmt)) {}
+template <typename... ARGS>
+OutStream<ARGS...>::OutStream(SqliteConnection &conn, detail::StmtPtr &&stmt)
+    : conn_(conn), stmt_(std::move(stmt)) {}
 
-template <typename... Args>
-void OutStream<Args...>::Write(const Args &... args) {
-  SqliteBind(*this->stmt, args...);
-  int res = sqlite3_step(this->stmt.get());
+template <typename... ARGS>
+void OutStream<ARGS...>::Write(const ARGS &... args) {
+  SqliteBind(*this->stmt_, args...);
+  int res = sqlite3_step(this->stmt_.get());
   if (res != SQLITE_DONE) {
-    throw sqlite_exception(this->conn.db, "Advancing output stream");
+    throw SqliteException(this->conn_.db_, "Advancing output stream");
   }
-  res = sqlite3_clear_bindings(this->stmt.get());
+  res = sqlite3_clear_bindings(this->stmt_.get());
   if (res != SQLITE_OK) {
-    throw sqlite_exception(this->conn.db, "Clearing output stream bindings");
+    throw SqliteException(this->conn_.db_, "Clearing output stream bindings");
   }
-  res = sqlite3_reset(this->stmt.get());
+  res = sqlite3_reset(this->stmt_.get());
   if (res != SQLITE_OK) {
-    throw sqlite_exception(this->conn.db,
-                           "Resetting statement in output stream");
+    throw SqliteException(this->conn_.db_,
+                          "Resetting statement in output stream");
   }
 }
 
-template <typename... Args>
-SqliteOutputIt<Args...> OutStream<Args...>::begin() {
-  return SqliteOutputIt<Args...>(*this);
+template <typename... ARGS>
+SqliteOutputIt<ARGS...> OutStream<ARGS...>::begin() {  // NOLINT
+  return SqliteOutputIt<ARGS...>(*this);
 }
 
 #endif // SRC_SQL_LIB_IMPL_H_

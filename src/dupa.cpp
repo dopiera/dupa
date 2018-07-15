@@ -24,49 +24,49 @@ namespace mi = boost::multi_index;
 
 static_assert(sizeof(off_t) == 8);
 
-struct path_hash {
-  path_hash(std::string path, cksum hash) : path(std::move(path)), hash(hash) {}
+struct PathHash {
+  PathHash(std::string path, Cksum hash) : path_(std::move(path)), hash_(hash) {}
 
-  std::string path;
-  cksum hash;
+  std::string path_;
+  Cksum hash_;
 };
 
-struct by_path {};
-struct by_hash {};
-using path_hashes = mi::multi_index_container<
-    path_hash,
+struct ByPath {};
+struct ByHash {};
+using PathHashes = mi::multi_index_container<
+    PathHash,
     mi::indexed_by<
-        mi::ordered_unique<mi::tag<by_path>, mi::member<path_hash, std::string,
-                                                        &path_hash::path>>,
+        mi::ordered_unique<mi::tag<ByPath>, mi::member<PathHash, std::string,
+                                                       &PathHash::path_>>,
         mi::ordered_non_unique<
-            mi::tag<by_hash>, mi::member<path_hash, cksum, &path_hash::hash>>>>;
-using path_hashes_by_path = path_hashes::index<by_path>::type;
-using path_hashes_by_hash = path_hashes::index<by_hash>::type;
+            mi::tag<ByHash>, mi::member<PathHash, Cksum, &PathHash::hash_>>>>;
+using PathHashesByPath = PathHashes::index<ByPath>::type;
+using PathHashesByHash = PathHashes::index<ByHash>::type;
 
 struct PathHashesFiller : ScanProcessor<fs::path> {
-  explicit PathHashesFiller(path_hashes &hashes) : hashes_(hashes) {}
+  explicit PathHashesFiller(PathHashes &hashes) : hashes_(hashes) {}
 
   void File(fs::path const &path, fs::path const &parent,
-            file_info const &f_info) override {
+            FileInfo const &f_info) override {
     fs::path const relative = parent / path.filename();
-    hashes_.insert(path_hash(relative.native(), f_info.sum));
+    hashes_.insert(PathHash(relative.native(), f_info.sum_));
   }
   fs::path RootDir(fs::path const & /*path*/) override { return fs::path(); }
   fs::path Dir(fs::path const &path, fs::path const &parent) override {
     return parent / path.filename();
   }
 
-  path_hashes &hashes_;
+  PathHashes &hashes_;
 };
 
-void fill_path_hashes(std::string const &start_dir, path_hashes &hashes) {
+void FillPathHashes(std::string const &start_dir, PathHashes &hashes) {
   PathHashesFiller processor(hashes);
   ScanDirectoryOrDb(start_dir, processor);
 }
 
-using paths = std::vector<std::string>;
+using Paths = std::vector<std::string>;
 
-template <class S> S &operator<<(S &stream, paths const &p) {
+template <class S> S &operator<<(S &stream, Paths const &p) {
   stream << "[";
   for (auto it = p.begin(); it != p.end(); ++it) {
     if (it != p.begin()) {
@@ -78,40 +78,40 @@ template <class S> S &operator<<(S &stream, paths const &p) {
   return stream;
 }
 
-paths get_paths_for_hash(path_hashes_by_hash &ps, cksum hash) {
-  paths res;
+Paths GetPathsForHash(PathHashesByHash &ps, Cksum hash) {
+  Paths res;
   for (auto r = ps.equal_range(hash); r.first != r.second; ++r.first) {
-    res.push_back(r.first->path);
+    res.push_back(r.first->path_);
   }
   return res;
 }
 
-void dir_compare(fs::path const &dir1, fs::path const &dir2) {
-  path_hashes hashes1, hashes2;
+void DirCompare(fs::path const &dir1, fs::path const &dir2) {
+  PathHashes hashes1, hashes2;
 
   std::thread h1filler(
-      [&dir1, &hashes1]() { fill_path_hashes(dir1.native(), hashes1); });
+      [&dir1, &hashes1]() { FillPathHashes(dir1.native(), hashes1); });
   std::thread h2filler(
-      [&dir2, &hashes2]() { fill_path_hashes(dir2.native(), hashes2); });
+      [&dir2, &hashes2]() { FillPathHashes(dir2.native(), hashes2); });
   h1filler.join();
   h2filler.join();
 
-  path_hashes_by_path &hashes1p(hashes1.get<by_path>());
-  path_hashes_by_path &hashes2p(hashes2.get<by_path>());
-  path_hashes_by_hash &hashes1h(hashes1.get<by_hash>());
-  path_hashes_by_hash &hashes2h(hashes2.get<by_hash>());
+  PathHashesByPath &hashes1p(hashes1.get<ByPath>());
+  PathHashesByPath &hashes2p(hashes2.get<ByPath>());
+  PathHashesByHash &hashes1h(hashes1.get<ByHash>());
+  PathHashesByHash &hashes2h(hashes2.get<ByHash>());
 
   for (auto const &path_and_hash : hashes1p) {
-    std::string const &p1 = path_and_hash.path;
-    cksum h1 = path_and_hash.hash;
-    path_hashes_by_path::const_iterator const same_path = hashes2p.find(p1);
+    std::string const &p1 = path_and_hash.path_;
+    Cksum h1 = path_and_hash.hash_;
+    PathHashesByPath::const_iterator const same_path = hashes2p.find(p1);
     if (same_path != hashes2p.end()) {
       // this path exists in second dir
-      cksum const h2 = same_path->hash;
+      Cksum const h2 = same_path->hash_;
       if (h1 == h2) {
         // std::cout << "NOT_CHANGED: " << p1 << std::endl;
       } else {
-        paths ps = get_paths_for_hash(hashes1h, h2);
+        Paths ps = GetPathsForHash(hashes1h, h2);
         if (!ps.empty()) {
           // rename from somewhere:
           std::cout << "OVERWRITTEN_BY: " << p1 << " CANDIDATES: " << ps
@@ -121,9 +121,9 @@ void dir_compare(fs::path const &dir1, fs::path const &dir2) {
         }
       }
     } else {
-      paths ps = get_paths_for_hash(hashes2h, h1);
+      Paths ps = GetPathsForHash(hashes2h, h1);
       if (!ps.empty()) {
-        if (!Conf().skip_renames) {
+        if (!Conf().skip_renames_) {
           std::cout << "RENAME: " << p1 << " -> " << ps << std::endl;
         }
       } else {
@@ -132,16 +132,16 @@ void dir_compare(fs::path const &dir1, fs::path const &dir2) {
     }
   }
   for (auto const &path_and_hash : hashes2p) {
-    std::string const &p2 = path_and_hash.path;
-    cksum h2 = path_and_hash.hash;
+    std::string const &p2 = path_and_hash.path_;
+    Cksum h2 = path_and_hash.hash_;
     if (hashes1p.find(p2) != hashes1p.end()) {
       // path exists in both, so it has already been handled by the first
       // loop
       continue;
     }
-    paths ps = get_paths_for_hash(hashes1h, h2);
+    Paths ps = GetPathsForHash(hashes1h, h2);
     if (!ps.empty()) {
-      paths ps2;
+      Paths ps2;
       for (auto const &copy_candidate : ps) {
         if (hashes2p.find(copy_candidate) != hashes2p.end()) {
           ps2.push_back(copy_candidate);
@@ -159,7 +159,7 @@ void dir_compare(fs::path const &dir1, fs::path const &dir2) {
   }
 }
 
-static void print_compilation_profile_warning() {
+static void PrintCompilationProfileWarning() {
   LogLevel ll = stderr_loglevel;
   stderr_loglevel = DEBUG;
   DLOG("This is a debug build, performance might suck.");
@@ -167,26 +167,26 @@ static void print_compilation_profile_warning() {
 }
 
 int main(int argc, char **argv) {
-  print_compilation_profile_warning();
+  PrintCompilationProfileWarning();
   ParseArgv(argc, argv);
 
   try {
-    hash_cache::initializer hash_cache_init(Conf().read_cache_from,
-                                            Conf().dump_cache_to);
+    HashCache::Initializer hash_cache_init(Conf().read_cache_from_,
+                                           Conf().dump_cache_to_);
 
-    if (Conf().cache_only) {
-      for (auto const &dir : Conf().dirs) {
-        path_hashes hashes;
-        fill_path_hashes(dir, hashes);
+    if (Conf().cache_only_) {
+      for (auto const &dir : Conf().dirs_) {
+        PathHashes hashes;
+        FillPathHashes(dir, hashes);
       }
       return 0;
     }
-    if (Conf().dirs.size() == 1) {
+    if (Conf().dirs_.size() == 1) {
       // Open database first to catch configuration issues soon.
       std::unique_ptr<SqliteConnection> db(
-          Conf().sql_out.empty() ? nullptr
-                                 : new SqliteConnection(Conf().sql_out));
-      FuzzyDedupRes res = fuzzy_dedup(Conf().dirs[0]);
+          Conf().sql_out_.empty() ? nullptr
+                                 : new SqliteConnection(Conf().sql_out_));
+      FuzzyDedupRes res = FuzzyDedup(Conf().dirs_[0]);
       if (!res.first) {
         // no nodes at all
         std::cout << "No files in specified location" << std::endl;
@@ -195,14 +195,14 @@ int main(int argc, char **argv) {
         PrintEqClassses(eq_classes);
         PrintScatteredDirectories(*res.first);
         if (!!db) {
-          LOG(INFO, "Dumping results to " << Conf().sql_out);
+          LOG(INFO, "Dumping results to " << Conf().sql_out_);
           CreateResultsDatabase(*db);
           DumpFuzzyDedupRes(*db, res);
           DumpInterestingEqClasses(*db, eq_classes);
         }
       }
-    } else if (Conf().dirs.size() == 2) {
-      dir_compare(Conf().dirs[0], Conf().dirs[1]);
+    } else if (Conf().dirs_.size() == 2) {
+      DirCompare(Conf().dirs_[0], Conf().dirs_[1]);
       return 0;
     } else {
       // Should have been checked already.

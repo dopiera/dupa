@@ -17,9 +17,9 @@ struct SyncCounter {
   void WaitForZero();
 
 private:
-  std::mutex m;
-  std::condition_variable cv;
-  volatile size_t cntr;
+ std::mutex m_;
+ std::condition_variable cv_;
+ volatile size_t cntr_;
 };
 
 struct SyncThreadPool {
@@ -35,13 +35,13 @@ struct SyncThreadPool {
 private:
   void ThreadLoop();
 
-  volatile bool closing;
-  volatile size_t outstanding;
-  std::mutex mutex;
-  std::condition_variable cv;
-  std::condition_variable user_cv;
-  std::queue<std::function<void()>> q;
-  std::vector<std::unique_ptr<std::thread>> threads;
+  volatile bool closing_;
+  volatile size_t outstanding_;
+  std::mutex mutex_;
+  std::condition_variable cv_;
+  std::condition_variable user_cv_;
+  std::queue<std::function<void()>> q_;
+  std::vector<std::unique_ptr<std::thread>> threads_;
 };
 
 #endif // SRC_SYNCH_THREAD_POOL_H_
