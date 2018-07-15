@@ -120,8 +120,6 @@ private:
 template <typename... Args> class InStreamHolder {
   // The sole purpose of this class is to make SqliteConnection::Query()'s
   // result copyable, so that you can write:
-  // for (const auto &row : conn.Query<int, std::string>("SELECT a, b..."))
-  // This is going to get even better with structured binding in C++ 17:
   // for (const auto &[a, b] : conn.Query<int, std::string>("SELECT a, b..."))
 public:
   explicit InStreamHolder(std::shared_ptr<InStream<Args...>> impl)

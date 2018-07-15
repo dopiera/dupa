@@ -122,12 +122,9 @@ std::unordered_map<std::string, file_info>
 read_cache_from_db(std::string const &path) {
   std::unordered_map<std::string, file_info> cache;
   SqliteConnection db(path, SQLITE_OPEN_READONLY);
-  for (const auto &row : db.Query<std::string, cksum, off_t, time_t>(
+  for (const auto &[path, sum, size, mtime] :
+       db.Query<std::string, cksum, off_t, time_t>(
            "SELECT path, cksum, size, mtime FROM Cache")) {
-    std::string const &path = std::get<0>(row);
-    cksum const sum = std::get<1>(row);
-    off_t const size = std::get<2>(row);
-    time_t const mtime = std::get<3>(row);
     DLOG("Read \"" << path << "\": " << sum << " " << size << " " << mtime);
 
     file_info f_info(size, mtime, sum);
