@@ -13,7 +13,7 @@ inline std::unique_ptr<C, SqliteDeleter> MakeSqliteUnique(C *o) {
   return std::unique_ptr<C, SqliteDeleter>(o);
 }
 
-//======== sqlite_exception ====================================================
+//======== SqliteException =====================================================
 
 SqliteException::SqliteException(int sqlite_code, std::string const &operation)
     : reason_(operation + ": " + sqlite3_errstr(sqlite_code)),
