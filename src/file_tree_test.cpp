@@ -78,9 +78,9 @@ TEST(NodeTest, PathBuilding) {
   dummy.AddNode(*child);
   dummy.AddNode(n);
 
-  namespace bf = boost::filesystem;
-  ASSERT_EQ(n.BuildPath(), bf::path("aaa"));
-  ASSERT_EQ(child->BuildPath(), bf::path("aaa") / bf::path("bbb"));
+  namespace fs = boost::filesystem;
+  ASSERT_EQ(n.BuildPath(), fs::path("aaa"));
+  ASSERT_EQ(child->BuildPath(), fs::path("aaa") / fs::path("bbb"));
 }
 
 TEST(NodeTest, GetPossibleEquivalents) {
