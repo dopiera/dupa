@@ -4,13 +4,13 @@
 
 #include "log.h"
 
-struct DBDeleter : public std::unary_function<void *, void> {
+struct SqliteDeleter : public std::unary_function<void *, void> {
   void operator()(void *p) const { sqlite3_free(p); }
 };
 
 template <class C>
-inline std::unique_ptr<C, DBDeleter> MakeDBUnique(C *o) {
-  return std::unique_ptr<C, DBDeleter>(o);
+inline std::unique_ptr<C, SqliteDeleter> MakeSqliteUnique(C *o) {
+  return std::unique_ptr<C, SqliteDeleter>(o);
 }
 
 //======== DBException =========================================================
@@ -50,7 +50,7 @@ DBConnection::DBConnection(const std::string &path, int flags) {
   char *err_msg_raw;
   res = sqlite3_exec(db_, sql, nullptr, nullptr, &err_msg_raw);
   if (res != SQLITE_OK) {
-    auto err_msg = MakeDBUnique(err_msg_raw);
+    auto err_msg = MakeSqliteUnique(err_msg_raw);
     throw DBException(db_,
                       std::string("Creating results tables: ") + err_msg.get());
   }
@@ -79,7 +79,7 @@ void DBConnection::Exec(const std::string &sql) {
   char *err_msg_raw;
   int res = sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &err_msg_raw);
   if (res != SQLITE_OK) {
-    auto err_msg = MakeDBUnique(err_msg_raw);
+    auto err_msg = MakeSqliteUnique(err_msg_raw);
     throw DBException(
         db_, std::string("Executing SQL (") + sql + "): " + err_msg.get());
   }

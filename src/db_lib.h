@@ -19,11 +19,11 @@ class DBOutStream;
 
 namespace detail {
 
-struct DBFinalizer : public std::unary_function<sqlite3_stmt *, void> {
+struct SqliteFinalizer : public std::unary_function<sqlite3_stmt *, void> {
   void operator()(sqlite3_stmt *p) const { sqlite3_finalize(p); }
 };
 
-using DBStmtPtr = std::unique_ptr<sqlite3_stmt, DBFinalizer>;
+using DBStmtPtr = std::unique_ptr<sqlite3_stmt, SqliteFinalizer>;
 
 } /* namespace detail */
 
