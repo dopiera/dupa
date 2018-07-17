@@ -9,7 +9,8 @@
 
 // DIR_HANDLE can be whatever provided that it has proper value semantics.
 template <class DIR_HANDLE>
-struct ScanProcessor {
+class ScanProcessor {
+ public:
   virtual void File(const boost::filesystem::path &path,
                     const DIR_HANDLE &parent, const FileInfo &f_info) = 0;
   virtual DIR_HANDLE RootDir(const boost::filesystem::path &path) = 0;

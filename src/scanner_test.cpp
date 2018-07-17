@@ -5,7 +5,7 @@
 #include "gtest/gtest.h"
 #include "test_common.h"
 
-struct Node;
+class Node;
 using NodePtr = std::shared_ptr<Node>;
 
 template <class T>
@@ -23,7 +23,8 @@ struct NodePtrComparator {
   bool operator()(const NodePtr &n1, const NodePtr &n2) const;
 };
 
-struct Node {
+class Node {
+ public:
   explicit Node(std::string name) : name_(std::move(name)) {}
   virtual ~Node() = default;
 
@@ -41,17 +42,20 @@ bool NodePtrComparator::operator()(const NodePtr &n1, const NodePtr &n2) const {
   return n1->name_ < n2->name_;
 }
 
-struct File : public Node {
+class File : public Node {
+ public:
   explicit File(const std::string &name) : Node(name) {}
   bool IsDir() const override { return false; }
 };
 
-struct Dir : public Node {
+class Dir : public Node {
+ public:
   explicit Dir(const std::string &name) : Node(name) {}
   bool IsDir() const override { return true; }
 };
 
-struct TestProcessor : public ScanProcessor<NodePtr> {
+class TestProcessor : public ScanProcessor<NodePtr> {
+ public:
   void File(const boost::filesystem::path &path, const NodePtr &parent,
             const FileInfo & /*f_info*/) override {
     parent->entries_.insert(NodePtr(new ::File(path.native())));

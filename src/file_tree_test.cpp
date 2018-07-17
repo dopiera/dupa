@@ -118,12 +118,6 @@ TEST(NodeTest, GetPossibleEquivalents) {
   ASSERT_EQ(n1.GetPossibleEquivalents(), expected);
 }
 
-struct NodeGatherer {
-  void OnNode(Node *node) { nodes_.push_back(node); }
-
-  Nodes nodes_;
-};
-
 TEST(NodeTest, Traverse) {
   Node n1(Node::DIR, "n1");
   Node *n2 = new Node(Node::DIR, "n2");
@@ -140,11 +134,10 @@ TEST(NodeTest, Traverse) {
   expected.push_back(n4);
   std::sort(expected.begin(), expected.end());
 
-  NodeGatherer gatherer;
-  n1.Traverse(std::bind(&NodeGatherer::OnNode, std::ref(gatherer),
-                        std::placeholders::_1));
-  std::sort(gatherer.nodes_.begin(), gatherer.nodes_.end());
-  ASSERT_EQ(gatherer.nodes_, expected);
+  Nodes nodes;
+  n1.Traverse([&nodes](Node *node) { nodes.push_back(node); });
+  std::sort(nodes.begin(), nodes.end());
+  ASSERT_EQ(nodes, expected);
 }
 
 TEST(NodeTest, AncestorTestIndependentFiles) {

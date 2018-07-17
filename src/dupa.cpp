@@ -44,7 +44,8 @@ using PathHashes = mi::multi_index_container<
 using PathHashesByPath = PathHashes::index<ByPath>::type;
 using PathHashesByHash = PathHashes::index<ByHash>::type;
 
-struct PathHashesFiller : ScanProcessor<fs::path> {
+class PathHashesFiller : public ScanProcessor<fs::path> {
+ public:
   explicit PathHashesFiller(PathHashes &hashes) : hashes_(hashes) {}
 
   void File(const fs::path &path, const fs::path &parent,
@@ -57,6 +58,7 @@ struct PathHashesFiller : ScanProcessor<fs::path> {
     return parent / path.filename();
   }
 
+ private:
   PathHashes &hashes_;
 };
 

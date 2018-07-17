@@ -4,7 +4,8 @@
 #include <exception>
 #include <string>
 
-struct FsException : std::exception {
+class FsException : public std::exception {
+ public:
   FsException(int err, const std::string &operation)
       : msg_(FsException::MsgFromErrno(err, operation)) {}
   ~FsException() noexcept override = default;

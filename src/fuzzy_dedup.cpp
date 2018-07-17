@@ -79,7 +79,8 @@ namespace detail {
 
 //======== ScanDirectory =======================================================
 
-struct TreeCtorProcessor : public ScanProcessor<Node *> {
+class TreeCtorProcessor : public ScanProcessor<Node *> {
+ public:
   void File(const boost::filesystem::path &path, Node *const &parent,
             const FileInfo &f_info) override {
     Node *node = new Node(Node::FILE, path.filename().native(), f_info.size_);
@@ -116,27 +117,14 @@ std::pair<Node *, Sum2Node> ScanDirectory(const std::string &dir) {
 
 //======== ClassifyEmptyDirs ===================================================
 
-namespace {
-
-struct EmptyDirsEqClassFill {
-  EmptyDirsEqClassFill() : eq_class_(new EqClass) {}
-
-  void OnNode(Node *node) {
-    if (node->IsEmptyDir()) {
-      eq_class_->AddNode(*node);
-    }
-  }
-  std::unique_ptr<EqClass> eq_class_;
-};
-
-} /* anonymous namespace */
-
 std::unique_ptr<EqClass> ClassifyEmptyDirs(Node &node) {
-  EmptyDirsEqClassFill empty_dir_classifier;
-  node.Traverse(std::bind(&EmptyDirsEqClassFill::OnNode,
-                          std::ref(empty_dir_classifier),
-                          std::placeholders::_1));
-  return std::move(empty_dir_classifier.eq_class_);
+  auto eq_class = std::make_unique<EqClass>();
+  node.Traverse([&eq_class](Node *node) {
+    if (node->IsEmptyDir()) {
+      eq_class->AddNode(*node);
+    }
+  });
+  return std::move(eq_class);
 }
 
 //======== ClassifyDuplicateFiles ==============================================
@@ -162,24 +150,14 @@ EqClassesPtr ClassifyDuplicateFiles(Node & /*node*/,
 
 //======== GetNodesReadyToEval =================================================
 
-namespace {
-
-struct GatherReadyToEval {
-  void OnNode(Node *node) {
-    if (node->IsReadyToEvaluate() && !node->IsEvaluated()) {
-      ready_to_evaluate_.push(node);
-    }
-  }
-  std::queue<Node *> ready_to_evaluate_;
-};
-
-} /* anonymous namespace */
-
 std::queue<Node *> GetNodesReadyToEval(Node &node) {
-  GatherReadyToEval gathered;
-  node.Traverse(std::bind(&GatherReadyToEval::OnNode, std::ref(gathered),
-                          std::placeholders::_1));
-  return gathered.ready_to_evaluate_;
+  std::queue<Node *> res;
+  node.Traverse([&res](Node *node) {
+    if (node->IsReadyToEvaluate() && !node->IsEvaluated()) {
+      res.push(node);
+    }
+  });
+  return res;
 }
 
 //======== GetClosestNode ======================================================

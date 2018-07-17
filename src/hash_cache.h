@@ -30,7 +30,8 @@ std::unordered_map<std::string, FileInfo> ReadCacheFromDb(
 
 class HashCache {
  public:
-  struct Initializer {
+  class Initializer {
+   public:
     Initializer(const std::string &read_cache_from,
                 const std::string &dump_cache_to);
     ~Initializer();

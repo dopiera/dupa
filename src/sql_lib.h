@@ -27,7 +27,8 @@ using StmtPtr = std::unique_ptr<sqlite3_stmt, SqliteFinalizer>;
 
 } /* namespace detail */
 
-struct SqliteException : std::exception {
+class SqliteException : std::exception {
+ public:
   SqliteException(int sqlite_code, const std::string &operation);
   SqliteException(sqlite3 *db, const std::string &operation);
   explicit SqliteException(std::string reason);

@@ -163,27 +163,14 @@ void EqClass::AddNode(Node &node) {
   node.SetEqClass(this);
 }
 
-namespace {
-
-struct NodePathOrder : public std::binary_function<Node *, Node *, bool> {
-  bool operator()(const Node *n1, const Node *n2) const {
-    return n1->BuildPath().native() < n2->BuildPath().native();
-  }
-};
-
-struct UniquenessOrder : public std::binary_function<Node *, Node *, bool> {
-  bool operator()(const Node *n1, const Node *n2) const {
-    return n1->unique_fraction_ > n2->unique_fraction_;
-  }
-};
-
-}  // anonymous namespace
-
 void PrintEqClassses(const std::vector<EqClass *> &eq_classes) {
   std::cout << "*** Classes of similar directories or files:" << std::endl;
   for (const EqClass *eq_class : eq_classes) {
     Nodes to_print(eq_class->nodes_);
-    std::sort(to_print.begin(), to_print.end(), NodePathOrder());
+    std::sort(to_print.begin(), to_print.end(),
+              [](const Node *n1, const Node *n2) {
+                return n1->BuildPath().native() < n2->BuildPath().native();
+              });
     for (auto node_it = to_print.begin(); node_it != to_print.end();
          ++node_it) {
       std::cout << (*node_it)->BuildPath().native();
@@ -207,7 +194,10 @@ void PrintScatteredDirectories(const Node &root) {
       scattered_dirs.push_back(n);
     }
   });
-  std::sort(scattered_dirs.begin(), scattered_dirs.end(), UniquenessOrder());
+  std::sort(scattered_dirs.begin(), scattered_dirs.end(),
+            [](const Node *n1, const Node *n2) {
+              return n1->unique_fraction_ > n2->unique_fraction_;
+            });
   for (const Node *dir : scattered_dirs) {
     std::cout << dir->BuildPath().native() << std::endl;
   }

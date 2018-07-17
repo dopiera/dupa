@@ -187,7 +187,8 @@ void HashCache::StoreCksums() {
 
 namespace {
 
-struct AutoFdCloser {
+class AutoFdCloser {
+ public:
   explicit AutoFdCloser(int fd) : fd_(fd) {}
   ~AutoFdCloser() {
     int res = close(fd_);
