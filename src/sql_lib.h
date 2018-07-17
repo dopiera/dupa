@@ -28,11 +28,11 @@ using StmtPtr = std::unique_ptr<sqlite3_stmt, SqliteFinalizer>;
 } /* namespace detail */
 
 struct SqliteException : std::exception {
-  SqliteException(int sqlite_code, std::string const &operation);
-  SqliteException(sqlite3 *db, std::string const &operation);
+  SqliteException(int sqlite_code, const std::string &operation);
+  SqliteException(sqlite3 *db, const std::string &operation);
   explicit SqliteException(std::string reason);
   ~SqliteException() noexcept override;
-  char const *what() const noexcept override;
+  const char *what() const noexcept override;
   int Code() const noexcept;
 
  private:
@@ -71,7 +71,7 @@ class SqliteOutputIt
   SqliteOutputIt &operator*() { return *this; }
   SqliteOutputIt &operator++() { return *this; }
   SqliteOutputIt &operator++(int) { return *this; }
-  SqliteOutputIt &operator=(std::tuple<ARGS...> const &args);
+  SqliteOutputIt &operator=(const std::tuple<ARGS...> &args);
 
  private:
   OutStream<ARGS...> *stream_;
@@ -156,7 +156,7 @@ class SqliteTransaction {
 
 class SqliteConnection {
  public:
-  explicit SqliteConnection(std::string const &path,
+  explicit SqliteConnection(const std::string &path,
                             int flags = SQLITE_OPEN_READWRITE |
                                         SQLITE_OPEN_CREATE);
   ~SqliteConnection();
@@ -169,7 +169,7 @@ class SqliteConnection {
  private:
   using StmtPtr = detail::StmtPtr;
 
-  StmtPtr PrepareStmt(std::string const &sql);
+  StmtPtr PrepareStmt(const std::string &sql);
 
   sqlite3 *db_;
 

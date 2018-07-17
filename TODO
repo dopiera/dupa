@@ -1,6 +1,5 @@
 - test for fuzzy_dedup
 - unify style
-  - homogenize const placement
   - update most structs to classes
 - pick better names for sql_lib.h
 - less brutal error handling

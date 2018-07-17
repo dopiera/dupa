@@ -4,8 +4,8 @@
 
 #include <string>
 
-std::string FsException::MsgFromErrno(int err, std::string const &operation) {
+std::string FsException::MsgFromErrno(int err, const std::string &operation) {
   char buf[128];
-  char const *const msg = strerror_r(err, buf, sizeof(buf));
+  const char *const msg = strerror_r(err, buf, sizeof(buf));
   return operation + ": " + std::to_string(err) + " (" + msg + ")";
 }

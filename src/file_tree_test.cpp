@@ -7,7 +7,7 @@
 #include "gtest/gtest.h"
 #include "test_common.h"
 
-void PrintTo(Node const *n, std::ostream *os) {
+void PrintTo(const Node *n, std::ostream *os) {
   boost::filesystem::PrintTo(n->BuildPath(), os);
 }
 

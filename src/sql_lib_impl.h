@@ -20,13 +20,13 @@ namespace detail {
 template <typename C, class ENABLED = void>
 struct SqliteBind1 {
   static_assert(sizeof(C) == -1, "Don't know how to bind this type.");
-  void operator()(sqlite3_stmt &s, int idx, C const &value);
+  void operator()(sqlite3_stmt &s, int idx, const C &value);
 };
 
 template <typename C>
 struct SqliteBind1<C,
                    typename std::enable_if<std::is_integral<C>::value>::type> {
-  void operator()(sqlite3_stmt &s, int idx, C const &value) {
+  void operator()(sqlite3_stmt &s, int idx, const C &value) {
     int res = sqlite3_bind_int64(&s, idx, value);
     if (res != SQLITE_OK) {
       throw SqliteException(res, "Binding parameter.");
@@ -37,7 +37,7 @@ struct SqliteBind1<C,
 template <typename C>
 struct SqliteBind1<
     C, typename std::enable_if<std::is_floating_point<C>::value>::type> {
-  void operator()(sqlite3_stmt &s, int idx, C const &value) {
+  void operator()(sqlite3_stmt &s, int idx, const C &value) {
     int res = sqlite3_bind_double(&s, idx, value);
     if (res != SQLITE_OK) {
       throw SqliteException(res, "Binding parameter.");
@@ -47,7 +47,7 @@ struct SqliteBind1<
 
 template <>
 struct SqliteBind1<std::string> {
-  void operator()(sqlite3_stmt &s, int idx, std::string const &str) {
+  void operator()(sqlite3_stmt &s, int idx, const std::string &str) {
     auto *mem = static_cast<char *>(malloc(str.length() + 1));
     if (mem == nullptr) {
       throw std::bad_alloc();
@@ -65,7 +65,7 @@ struct SqliteBind1<std::string> {
 inline void SqliteBindImpl(sqlite3_stmt & /*s*/, int /*idx*/) {}
 
 template <typename T, typename... ARGS>
-inline void SqliteBindImpl(sqlite3_stmt &s, int idx, T const &a, ARGS... args) {
+inline void SqliteBindImpl(sqlite3_stmt &s, int idx, const T &a, ARGS... args) {
   SqliteBind1<T>()(s, idx, a);
   SqliteBindImpl(s, idx + 1, args...);
 }
@@ -200,7 +200,7 @@ inline void DispatchImpl(OutStream<ARGS...> &stream,
 
 template <typename... ARGS>
 SqliteOutputIt<ARGS...> &SqliteOutputIt<ARGS...>::operator=(
-    std::tuple<ARGS...> const &args) {
+    const std::tuple<ARGS...> &args) {
   DispatchImpl(*stream_, args, std::index_sequence_for<ARGS...>());
   return *this;
 }

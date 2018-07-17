@@ -49,7 +49,7 @@ class InodeCache {
     cache_map_.insert(std::make_pair(ino, sum));
   }
 
-  static StatResult GetInodeInfo(int fd, std::string const &path_for_errors) {
+  static StatResult GetInodeInfo(int fd, const std::string &path_for_errors) {
     struct stat st;
     int res = fstat(fd, &st);
     if (res != 0) {
@@ -73,7 +73,7 @@ class InodeCache {
 InodeCache ino_cache;
 
 Cksum ComputeCksum(int fd, InodeCache::Uuid uuid,
-                   std::string const &path_for_errors) {
+                   const std::string &path_for_errors) {
   {
     std::pair<bool, Cksum> sum = ino_cache.Get(uuid);
     if (sum.first) {
@@ -83,7 +83,7 @@ Cksum ComputeCksum(int fd, InodeCache::Uuid uuid,
     }
   }
 
-  size_t const buf_size = 1024 * 1024;
+  const size_t buf_size = 1024 * 1024;
   std::unique_ptr<char[]> buf(new char[buf_size]);
 
   union {
@@ -118,7 +118,7 @@ Cksum ComputeCksum(int fd, InodeCache::Uuid uuid,
 } /* anonymous namespace */
 
 std::unordered_map<std::string, FileInfo> ReadCacheFromDb(
-    std::string const &path) {
+    const std::string &path) {
   std::unordered_map<std::string, FileInfo> cache;
   SqliteConnection db(path, SQLITE_OPEN_READONLY);
   for (const auto &[path, sum, size, mtime] :
@@ -135,15 +135,15 @@ std::unordered_map<std::string, FileInfo> ReadCacheFromDb(
 
 HashCache *HashCache::instance_;
 
-HashCache::Initializer::Initializer(std::string const &read_cache_from,
-                                    std::string const &dump_cache_to) {
+HashCache::Initializer::Initializer(const std::string &read_cache_from,
+                                    const std::string &dump_cache_to) {
   HashCache::Initialize(read_cache_from, dump_cache_to);
 }
 
 HashCache::Initializer::~Initializer() { HashCache::Finalize(); }
 
-HashCache::HashCache(std::string const &read_cache_from,
-                     std::string const &dump_cache_to) {
+HashCache::HashCache(const std::string &read_cache_from,
+                     const std::string &dump_cache_to) {
   if (!read_cache_from.empty()) {
     auto cache = ReadCacheFromDb(read_cache_from);
     std::lock_guard<std::mutex> lock(mutex_);
@@ -205,8 +205,8 @@ struct AutoFdCloser {
 
 } /* anonymous namespace */
 
-FileInfo HashCache::operator()(boost::filesystem::path const &p) {
-  std::string const &native = p.native();
+FileInfo HashCache::operator()(const boost::filesystem::path &p) {
+  const std::string &native = p.native();
   int fd = open(native.c_str(), O_RDONLY);
   if (fd == -1) {
     throw FsException(errno, "open '" + native + "'");
@@ -218,7 +218,7 @@ FileInfo HashCache::operator()(boost::filesystem::path const &p) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = cache_.find(p.native());
     if (it != cache_.end()) {
-      FileInfo const &cached = it->second;
+      const FileInfo &cached = it->second;
       if (cached.size_ == stat_res.size_ && cached.mtime_ == stat_res.mtime_) {
         return it->second;
       }
@@ -237,8 +237,8 @@ FileInfo HashCache::operator()(boost::filesystem::path const &p) {
   return res;
 }
 
-void HashCache::Initialize(std::string const &read_cache_from,
-                           std::string const &dump_cache_to) {
+void HashCache::Initialize(const std::string &read_cache_from,
+                           const std::string &dump_cache_to) {
   assert(!instance_);
   HashCache::instance_ = new HashCache(read_cache_from, dump_cache_to);
 }

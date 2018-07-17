@@ -60,7 +60,7 @@ void ParseArgv(int argc, const char *const argv[]) {
                   .run(),
               vm);
     po::notify(vm);
-  } catch (po::error const &e) {
+  } catch (const po::error &e) {
     std::cerr << e.what() << std::endl;
     std::cerr << desc << std::endl;
     exit(1);
@@ -82,11 +82,11 @@ void ParseArgv(int argc, const char *const argv[]) {
 
 void InitTestConf() {
   // do whatever makes any sense so that default values are set
-  char const *argv[] = {"test_binary", ".", nullptr};
+  const char *argv[] = {"test_binary", ".", nullptr};
   ParseArgv(2, argv);
 }
 
-GlobalConfig const &Conf() {
+const GlobalConfig &Conf() {
   assert(!!conf);
   return *conf;
 }

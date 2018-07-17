@@ -5,13 +5,13 @@
 #include <string>
 
 struct FsException : std::exception {
-  FsException(int err, std::string const &operation)
+  FsException(int err, const std::string &operation)
       : msg_(FsException::MsgFromErrno(err, operation)) {}
   ~FsException() noexcept override = default;
-  char const *what() const noexcept override { return msg_.c_str(); }
+  const char *what() const noexcept override { return msg_.c_str(); }
 
  private:
-  static std::string MsgFromErrno(int err, std::string const &operation);
+  static std::string MsgFromErrno(int err, const std::string &operation);
 
   std::string msg_;
 };

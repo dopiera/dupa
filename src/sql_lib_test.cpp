@@ -62,7 +62,7 @@ class SqliteTest : public ::testing::Test {
  protected:
   TmpDir tmp_;
   SqliteConnection db_;
-  std::vector<std::tuple<int, float, char const *>> data_;
+  std::vector<std::tuple<int, float, const char *>> data_;
 };
 
 TEST_F(SqliteTest, TableCreate) { CreateTable(); }

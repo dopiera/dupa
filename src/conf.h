@@ -20,6 +20,6 @@ struct GlobalConfig {
 
 void ParseArgv(int argc, const char *const argv[]);
 void InitTestConf();
-GlobalConfig const &Conf();
+const GlobalConfig &Conf();
 
 #endif  // SRC_CONF_H_

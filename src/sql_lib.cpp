@@ -15,11 +15,11 @@ inline std::unique_ptr<C, SqliteDeleter> MakeSqliteUnique(C *o) {
 
 //======== SqliteException =====================================================
 
-SqliteException::SqliteException(int sqlite_code, std::string const &operation)
+SqliteException::SqliteException(int sqlite_code, const std::string &operation)
     : reason_(operation + ": " + sqlite3_errstr(sqlite_code)),
       sqlite_code_(sqlite_code) {}
 
-SqliteException::SqliteException(sqlite3 *db, std::string const &operation)
+SqliteException::SqliteException(sqlite3 *db, const std::string &operation)
     : reason_(operation + ": " + sqlite3_errmsg(db)),
       sqlite_code_(sqlite3_errcode(db)) {}
 
@@ -28,13 +28,13 @@ SqliteException::SqliteException(std::string reason)
 
 SqliteException::~SqliteException() noexcept = default;
 
-char const *SqliteException::what() const noexcept { return reason_.c_str(); }
+const char *SqliteException::what() const noexcept { return reason_.c_str(); }
 
 int SqliteException::Code() const noexcept { return sqlite_code_; }
 
 //======== SqliteConnection ====================================================
 
-SqliteConnection::SqliteConnection(std::string const &path, int flags) {
+SqliteConnection::SqliteConnection(const std::string &path, int flags) {
   int res = sqlite3_open_v2(path.c_str(), &db_, flags, nullptr);
   if (res != SQLITE_OK) {
     throw SqliteException(res, "Opening DB " + path);
@@ -67,7 +67,7 @@ SqliteConnection::~SqliteConnection() {
 }
 
 SqliteConnection::StmtPtr SqliteConnection::PrepareStmt(
-    std::string const &sql) {
+    const std::string &sql) {
   sqlite3_stmt *raw_stmt_ptr;
   int res = sqlite3_prepare_v2(db_, sql.c_str(), -1, &raw_stmt_ptr, nullptr);
   if (res != SQLITE_OK) {

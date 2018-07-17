@@ -29,7 +29,7 @@ struct SyncThreadPool {
   // be called before destroying this object.
   void Stop();
   // Will block if concurrency + 1 items are already scheduled.
-  void Submit(std::function<void()> const &fun);
+  void Submit(const std::function<void()> &fun);
   ~SyncThreadPool();
 
  private:

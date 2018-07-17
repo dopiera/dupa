@@ -9,7 +9,7 @@ struct Node;
 using NodePtr = std::shared_ptr<Node>;
 
 template <class T>
-typename T::value_type Nth(T const &t, size_t n) {
+typename T::value_type Nth(const T &t, size_t n) {
   auto it = t.begin();
   assert(it != t.end());
   for (size_t i = 0; i < n; ++i) {
@@ -42,28 +42,28 @@ bool NodePtrComparator::operator()(const NodePtr &n1, const NodePtr &n2) const {
 }
 
 struct File : public Node {
-  explicit File(std::string const &name) : Node(name) {}
+  explicit File(const std::string &name) : Node(name) {}
   bool IsDir() const override { return false; }
 };
 
 struct Dir : public Node {
-  explicit Dir(std::string const &name) : Node(name) {}
+  explicit Dir(const std::string &name) : Node(name) {}
   bool IsDir() const override { return true; }
 };
 
 struct TestProcessor : public ScanProcessor<NodePtr> {
-  void File(boost::filesystem::path const &path, NodePtr const &parent,
-            FileInfo const & /*f_info*/) override {
+  void File(const boost::filesystem::path &path, const NodePtr &parent,
+            const FileInfo & /*f_info*/) override {
     parent->entries_.insert(NodePtr(new ::File(path.native())));
   }
 
-  NodePtr RootDir(boost::filesystem::path const &path) override {
+  NodePtr RootDir(const boost::filesystem::path &path) override {
     root_.reset(new ::Dir(path.native()));
     return root_;
   }
 
-  NodePtr Dir(boost::filesystem::path const &path,
-              NodePtr const &parent) override {
+  NodePtr Dir(const boost::filesystem::path &path,
+              const NodePtr &parent) override {
     NodePtr n(new ::Dir(path.native()));
     parent->entries_.insert(n);
     return n;
@@ -73,7 +73,7 @@ struct TestProcessor : public ScanProcessor<NodePtr> {
 };
 
 TEST(DbImport, OneFile) {
-  FileInfo const fi(1, 2, 3);
+  const FileInfo fi(1, 2, 3);
   TestProcessor p;
   ScanDb(
       {
@@ -87,7 +87,7 @@ TEST(DbImport, OneFile) {
 }
 
 TEST(DbImport, RootPrefix) {
-  FileInfo const fi(1, 2, 3);
+  const FileInfo fi(1, 2, 3);
   TestProcessor p;
   ScanDb(
       {
@@ -98,8 +98,8 @@ TEST(DbImport, RootPrefix) {
   ASSERT_TRUE(p.root_->IsDir());
   ASSERT_EQ(p.root_->name_, "/");
   ASSERT_EQ(p.root_->Size(), 2U);
-  NodePtr const ala = p.root_->Nth(0);
-  NodePtr const bob = p.root_->Nth(1);
+  const NodePtr ala = p.root_->Nth(0);
+  const NodePtr bob = p.root_->Nth(1);
   ASSERT_EQ(ala->name_, "ala");
   ASSERT_EQ(ala->Size(), 1U);
   ASSERT_EQ(ala->Nth(0)->name_, "ma");
@@ -115,7 +115,7 @@ TEST(DbImport, RootPrefix) {
 }
 
 TEST(DbImport, EmptyPrefix) {
-  FileInfo const fi(1, 2, 3);
+  const FileInfo fi(1, 2, 3);
   TestProcessor p;
   ScanDb(
       {
@@ -126,8 +126,8 @@ TEST(DbImport, EmptyPrefix) {
   ASSERT_TRUE(p.root_->IsDir());
   ASSERT_EQ(p.root_->name_, "");
   ASSERT_EQ(p.root_->Size(), 2U);
-  NodePtr const ala = p.root_->Nth(0);
-  NodePtr const bob = p.root_->Nth(1);
+  const NodePtr ala = p.root_->Nth(0);
+  const NodePtr bob = p.root_->Nth(1);
   ASSERT_EQ(ala->name_, "ala");
   ASSERT_EQ(ala->Size(), 1U);
   ASSERT_EQ(ala->Nth(0)->name_, "ma");
@@ -143,7 +143,7 @@ TEST(DbImport, EmptyPrefix) {
 }
 
 TEST(DbImport, NontrivialPrefix) {
-  FileInfo const fi(1, 2, 3);
+  const FileInfo fi(1, 2, 3);
   TestProcessor p;
   ScanDb(
       {
@@ -154,8 +154,8 @@ TEST(DbImport, NontrivialPrefix) {
   ASSERT_TRUE(p.root_->IsDir());
   ASSERT_EQ(p.root_->name_, "ala/ma");
   ASSERT_EQ(p.root_->Size(), 2U);
-  NodePtr const ala = p.root_->Nth(0);
-  NodePtr const bob = p.root_->Nth(1);
+  const NodePtr ala = p.root_->Nth(0);
+  const NodePtr bob = p.root_->Nth(1);
   ASSERT_TRUE(ala->IsFile());
   ASSERT_EQ(ala->name_, "kota");
   ASSERT_TRUE(bob->IsFile());
@@ -163,7 +163,7 @@ TEST(DbImport, NontrivialPrefix) {
 }
 
 TEST(DbImport, NontrivialAbsolutePrefix) {
-  FileInfo const fi(1, 2, 3);
+  const FileInfo fi(1, 2, 3);
   TestProcessor p;
   ScanDb(
       {
@@ -174,8 +174,8 @@ TEST(DbImport, NontrivialAbsolutePrefix) {
   ASSERT_TRUE(p.root_->IsDir());
   ASSERT_EQ(p.root_->name_, "/ala/ma");
   ASSERT_EQ(p.root_->Size(), 2U);
-  NodePtr const ala = p.root_->Nth(0);
-  NodePtr const bob = p.root_->Nth(1);
+  const NodePtr ala = p.root_->Nth(0);
+  const NodePtr bob = p.root_->Nth(1);
   ASSERT_TRUE(ala->IsFile());
   ASSERT_EQ(ala->name_, "kota");
   ASSERT_TRUE(bob->IsFile());
@@ -183,7 +183,7 @@ TEST(DbImport, NontrivialAbsolutePrefix) {
 }
 
 TEST(DbImport, ComplexTest) {
-  FileInfo const fi(1, 2, 3);
+  const FileInfo fi(1, 2, 3);
   TestProcessor p;
   ScanDb(
       {
@@ -195,8 +195,8 @@ TEST(DbImport, ComplexTest) {
   ASSERT_TRUE(p.root_->IsDir());
   ASSERT_EQ(p.root_->name_, "/ala/ma");
   ASSERT_EQ(p.root_->Size(), 2U);
-  NodePtr const big = p.root_->Nth(0);
-  NodePtr const small = p.root_->Nth(1);
+  const NodePtr big = p.root_->Nth(0);
+  const NodePtr small = p.root_->Nth(1);
   ASSERT_TRUE(big->IsDir());
   ASSERT_EQ(big->name_, "duzego");
   ASSERT_EQ(big->Size(), 2U);

@@ -9,7 +9,7 @@ namespace filesystem {
 
 // Make boost::filesystem::path printable so that assertions have meaningful
 // text.
-void PrintTo(path const &p, std::ostream *os);
+void PrintTo(const path &p, std::ostream *os);
 
 } /* namespace filesystem */
 } /* namespace boost */

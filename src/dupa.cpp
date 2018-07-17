@@ -47,20 +47,20 @@ using PathHashesByHash = PathHashes::index<ByHash>::type;
 struct PathHashesFiller : ScanProcessor<fs::path> {
   explicit PathHashesFiller(PathHashes &hashes) : hashes_(hashes) {}
 
-  void File(fs::path const &path, fs::path const &parent,
-            FileInfo const &f_info) override {
-    fs::path const relative = parent / path.filename();
+  void File(const fs::path &path, const fs::path &parent,
+            const FileInfo &f_info) override {
+    const fs::path relative = parent / path.filename();
     hashes_.insert(PathHash(relative.native(), f_info.sum_));
   }
-  fs::path RootDir(fs::path const & /*path*/) override { return fs::path(); }
-  fs::path Dir(fs::path const &path, fs::path const &parent) override {
+  fs::path RootDir(const fs::path & /*path*/) override { return fs::path(); }
+  fs::path Dir(const fs::path &path, const fs::path &parent) override {
     return parent / path.filename();
   }
 
   PathHashes &hashes_;
 };
 
-void FillPathHashes(std::string const &start_dir, PathHashes &hashes) {
+void FillPathHashes(const std::string &start_dir, PathHashes &hashes) {
   PathHashesFiller processor(hashes);
   ScanDirectoryOrDb(start_dir, processor);
 }
@@ -68,7 +68,7 @@ void FillPathHashes(std::string const &start_dir, PathHashes &hashes) {
 using Paths = std::vector<std::string>;
 
 template <class S>
-S &operator<<(S &stream, Paths const &p) {
+S &operator<<(S &stream, const Paths &p) {
   stream << "[";
   for (auto it = p.begin(); it != p.end(); ++it) {
     if (it != p.begin()) {
@@ -88,7 +88,7 @@ Paths GetPathsForHash(PathHashesByHash &ps, Cksum hash) {
   return res;
 }
 
-void DirCompare(fs::path const &dir1, fs::path const &dir2) {
+void DirCompare(const fs::path &dir1, const fs::path &dir2) {
   PathHashes hashes1, hashes2;
 
   std::thread h1filler(
@@ -103,13 +103,13 @@ void DirCompare(fs::path const &dir1, fs::path const &dir2) {
   PathHashesByHash &hashes1h(hashes1.get<ByHash>());
   PathHashesByHash &hashes2h(hashes2.get<ByHash>());
 
-  for (auto const &path_and_hash : hashes1p) {
-    std::string const &p1 = path_and_hash.path_;
+  for (const auto &path_and_hash : hashes1p) {
+    const std::string &p1 = path_and_hash.path_;
     Cksum h1 = path_and_hash.hash_;
-    PathHashesByPath::const_iterator const same_path = hashes2p.find(p1);
+    const PathHashesByPath::const_iterator same_path = hashes2p.find(p1);
     if (same_path != hashes2p.end()) {
       // this path exists in second dir
-      Cksum const h2 = same_path->hash_;
+      const Cksum h2 = same_path->hash_;
       if (h1 == h2) {
         // std::cout << "NOT_CHANGED: " << p1 << std::endl;
       } else {
@@ -133,8 +133,8 @@ void DirCompare(fs::path const &dir1, fs::path const &dir2) {
       }
     }
   }
-  for (auto const &path_and_hash : hashes2p) {
-    std::string const &p2 = path_and_hash.path_;
+  for (const auto &path_and_hash : hashes2p) {
+    const std::string &p2 = path_and_hash.path_;
     Cksum h2 = path_and_hash.hash_;
     if (hashes1p.find(p2) != hashes1p.end()) {
       // path exists in both, so it has already been handled by the first
@@ -144,7 +144,7 @@ void DirCompare(fs::path const &dir1, fs::path const &dir2) {
     Paths ps = GetPathsForHash(hashes1h, h2);
     if (!ps.empty()) {
       Paths ps2;
-      for (auto const &copy_candidate : ps) {
+      for (const auto &copy_candidate : ps) {
         if (hashes2p.find(copy_candidate) != hashes2p.end()) {
           ps2.push_back(copy_candidate);
         }
@@ -177,7 +177,7 @@ int main(int argc, char **argv) {
                                            Conf().dump_cache_to_);
 
     if (Conf().cache_only_) {
-      for (auto const &dir : Conf().dirs_) {
+      for (const auto &dir : Conf().dirs_) {
         PathHashes hashes;
         FillPathHashes(dir, hashes);
       }
@@ -210,7 +210,7 @@ int main(int argc, char **argv) {
       // Should have been checked already.
       assert(false);
     }
-  } catch (std::ios_base::failure const &ex) {
+  } catch (const std::ios_base::failure &ex) {
     std::cerr << "Failure: " << ex.what() << std::endl;
     throw;
   }

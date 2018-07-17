@@ -26,7 +26,7 @@ void CreateResultsDatabase(SqliteConnection &db) {
 }
 
 void DumpInterestingEqClasses(SqliteConnection &db,
-                              std::vector<EqClass *> const &eq_classes) {
+                              const std::vector<EqClass *> &eq_classes) {
   SqliteTransaction trans(db);
   auto out = db.BatchInsert<uintptr_t>(
       "UPDATE EqClass SET interesting = 1 WHERE id == ?");
@@ -38,7 +38,7 @@ void DumpInterestingEqClasses(SqliteConnection &db,
   trans.Commit();
 }
 
-void DumpFuzzyDedupRes(SqliteConnection &db, FuzzyDedupRes const &res) {
+void DumpFuzzyDedupRes(SqliteConnection &db, const FuzzyDedupRes &res) {
   SqliteTransaction trans(db);
 
   auto class_out = db.BatchInsert<uintptr_t, size_t, double>(
@@ -46,7 +46,7 @@ void DumpFuzzyDedupRes(SqliteConnection &db, FuzzyDedupRes const &res) {
       "VALUES(?, ?, ?, 0)");
 
   std::transform(res.second->begin(), res.second->end(), class_out->begin(),
-                 [](std::unique_ptr<EqClass> const &eq_class) {
+                 [](const std::unique_ptr<EqClass> &eq_class) {
                    return std::make_tuple(
                        reinterpret_cast<uintptr_t>(eq_class.get()),
                        eq_class->GetNumNodes(), eq_class->GetWeight());
@@ -57,7 +57,7 @@ void DumpFuzzyDedupRes(SqliteConnection &db, FuzzyDedupRes const &res) {
       "INSERT INTO Node("
       "id, name, path, type, unique_fraction, eq_class) "
       "VALUES(?, ?, ?, ?, ?, ?)");
-  res.first->Traverse([&](Node const *n) {
+  res.first->Traverse([&](const Node *n) {
     node_out->Write(
         reinterpret_cast<uintptr_t>(n), n->GetName(), n->BuildPath().native(),
         (n->GetType() == Node::FILE) ? "FILE" : "DIR", n->unique_fraction_,

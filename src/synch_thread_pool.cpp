@@ -24,7 +24,7 @@ void SyncThreadPool::Stop() {
   threads_.clear();
 }
 
-void SyncThreadPool::Submit(std::function<void()> const &fun) {
+void SyncThreadPool::Submit(const std::function<void()> &fun) {
   std::unique_lock<std::mutex> lock(mutex_);
   assert(!closing_);
   user_cv_.wait(lock, [this] { return outstanding_ <= threads_.size(); });

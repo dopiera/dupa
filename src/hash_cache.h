@@ -26,25 +26,25 @@ struct FileInfo {
 };
 
 std::unordered_map<std::string, FileInfo> ReadCacheFromDb(
-    std::string const &path);
+    const std::string &path);
 
 class HashCache {
  public:
   struct Initializer {
-    Initializer(std::string const &read_cache_from,
-                std::string const &dump_cache_to);
+    Initializer(const std::string &read_cache_from,
+                const std::string &dump_cache_to);
     ~Initializer();
   };
   static HashCache &Get();
-  FileInfo operator()(boost::filesystem::path const &p);
+  FileInfo operator()(const boost::filesystem::path &p);
 
  private:
-  HashCache(std::string const &read_cache_from,
-            std::string const &dump_cache_to);
+  HashCache(const std::string &read_cache_from,
+            const std::string &dump_cache_to);
   ~HashCache();
   void StoreCksums();
-  static void Initialize(std::string const &read_cache_from,
-                         std::string const &dump_cache_to);
+  static void Initialize(const std::string &read_cache_from,
+                         const std::string &dump_cache_to);
   static void Finalize();
 
   static HashCache *instance_;

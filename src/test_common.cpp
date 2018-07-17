@@ -3,7 +3,7 @@
 namespace boost {
 namespace filesystem {
 
-void PrintTo(path const &p, std::ostream *os) { (*os) << p.native(); }
+void PrintTo(const path &p, std::ostream *os) { (*os) << p.native(); }
 
 } /* namespace filesystem */
 } /* namespace boost */

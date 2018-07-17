@@ -17,13 +17,13 @@
 
 namespace detail {
 
-boost::filesystem::path CommonPathPrefix(boost::filesystem::path const &p1,
-                                         boost::filesystem::path const &p2);
+boost::filesystem::path CommonPathPrefix(const boost::filesystem::path &p1,
+                                         const boost::filesystem::path &p2);
 
 }  // namespace detail
 
 template <class DIR_HANDLE>
-void ScanDirectory(boost::filesystem::path const &root,
+void ScanDirectory(const boost::filesystem::path &root,
                    ScanProcessor<DIR_HANDLE> &processor) {
   using boost::filesystem::path;
 
@@ -34,8 +34,8 @@ void ScanDirectory(boost::filesystem::path const &root,
   std::mutex mutex;
 
   while (!dirs_to_process.empty()) {
-    path const dir = dirs_to_process.top().first;
-    DIR_HANDLE const handle = dirs_to_process.top().second;
+    const path dir = dirs_to_process.top().first;
+    const DIR_HANDLE handle = dirs_to_process.top().second;
 
     dirs_to_process.pop();
 
@@ -44,7 +44,7 @@ void ScanDirectory(boost::filesystem::path const &root,
       if (is_symlink(it->path())) {
         continue;
       }
-      path const new_path = it->path();
+      const path new_path = it->path();
       if (is_directory(it->status())) {
         std::lock_guard<std::mutex> lock(mutex);
         dirs_to_process.push(
@@ -52,7 +52,7 @@ void ScanDirectory(boost::filesystem::path const &root,
       }
       if (boost::filesystem::is_regular(new_path)) {
         pool.Submit([new_path, handle, &mutex, &processor]() mutable {
-          FileInfo const f_info = HashCache::Get()(new_path);
+          const FileInfo f_info = HashCache::Get()(new_path);
           if (f_info.sum_) {
             std::lock_guard<std::mutex> lock(mutex);
             processor.File(new_path, handle, f_info);
@@ -73,19 +73,19 @@ void ScanDb(std::unordered_map<std::string, FileInfo> db,
   }
 
   path common_prefix = path(db.begin()->first).parent_path();
-  for (auto const &path_and_fi : db) {
+  for (const auto &path_and_fi : db) {
     common_prefix = detail::CommonPathPrefix(
         common_prefix, path(path_and_fi.first).parent_path());
   }
-  size_t const prefix_len =
+  const size_t prefix_len =
       std::distance(common_prefix.begin(), common_prefix.end());
 
   std::map<path, DIR_HANDLE> created_dirs;
   created_dirs[common_prefix] = processor.RootDir(common_prefix);
-  for (auto const &path_and_fi : db) {
+  for (const auto &path_and_fi : db) {
     LOG(INFO, path_and_fi.first);
-    path const analyzed(path_and_fi.first);
-    path const dir(analyzed.parent_path());
+    const path analyzed(path_and_fi.first);
+    const path dir(analyzed.parent_path());
 
     path::const_iterator it = dir.begin();
     for (size_t i = 0; i < prefix_len; ++i) {
@@ -96,7 +96,7 @@ void ScanDb(std::unordered_map<std::string, FileInfo> db,
     DIR_HANDLE parent_handle = created_dirs[common_prefix];
 
     for (; it != dir.end(); ++it) {
-      path const to_insert = parent / *it;
+      const path to_insert = parent / *it;
       auto created_dir_it = created_dirs.find(to_insert);
       if (created_dir_it == created_dirs.end()) {
         created_dir_it = created_dirs
@@ -112,7 +112,7 @@ void ScanDb(std::unordered_map<std::string, FileInfo> db,
 }
 
 template <class DIR_HANDLE>
-void ScanDb(boost::filesystem::path const &db_path,
+void ScanDb(const boost::filesystem::path &db_path,
             ScanProcessor<DIR_HANDLE> &processor) {
   using boost::filesystem::path;
 
@@ -122,9 +122,9 @@ void ScanDb(boost::filesystem::path const &db_path,
 
 // Will call one of the 2 above.
 template <class DIR_HANDLE>
-void ScanDirectoryOrDb(std::string const &path,
+void ScanDirectoryOrDb(const std::string &path,
                        ScanProcessor<DIR_HANDLE> &processor) {
-  std::string const db_prefix = "db:";
+  const std::string db_prefix = "db:";
   if (!Conf().ignore_db_prefix_ && path.find(db_prefix) == 0) {
     ScanDb(boost::filesystem::path(path.substr(db_prefix.length())), processor);
   } else {

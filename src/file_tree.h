@@ -51,16 +51,16 @@ class Node {
   bool IsEmptyDir() const { return GetType() == DIR && children_.empty(); }
   boost::filesystem::path BuildPath() const;
   double GetWeight() const;
-  std::string const &GetName() const { return name_; }
+  const std::string &GetName() const { return name_; }
   Node *GetParent() { return parent_; }
   // Return all nodes which are evaluated and share a child with this one.
   Nodes GetPossibleEquivalents() const;
   // Traverse the whole subtree (including this node) in a an unspecified
   // order and call callback on every node
   void Traverse(const std::function<void(Node *)> &callback);
-  void Traverse(const std::function<void(Node const *)> &callback) const;
-  Nodes const &GetChildren() const { return children_; }
-  bool IsAncestorOf(Node const &node);
+  void Traverse(const std::function<void(const Node *)> &callback) const;
+  const Nodes &GetChildren() const { return children_; }
+  bool IsAncestorOf(const Node &node);
 
   ~Node();
 
@@ -79,12 +79,12 @@ class Node {
   // FIXME: this is a great indication that separation is broken here
   double unique_fraction_;
 
-  friend double NodeDistance(Node const &n1, Node const &n2);
+  friend double NodeDistance(const Node &n1, const Node &n2);
   friend class EqClass;
 };
 
 // 0 for identical, 1 for no overlap; (symmetrical diffrence) / (union)
-double NodeDistance(Node const &n1, Node const &n2);
+double NodeDistance(const Node &n1, const Node &n2);
 
 class EqClass {
  public:
@@ -104,10 +104,10 @@ class EqClass {
 
 // Filter out only equivalence classes which have duplicates and are not already
 // described by their parents being duplicates of something else.
-void PrintEqClassses(std::vector<EqClass *> const &eq_classes);
+void PrintEqClassses(const std::vector<EqClass *> &eq_classes);
 
 // Print directories which have no duplicates but whose contents are mostly
 // duplicated to file outside of it.
-void PrintScatteredDirectories(Node const &root);
+void PrintScatteredDirectories(const Node &root);
 
 #endif  // SRC_FILE_TREE_H_

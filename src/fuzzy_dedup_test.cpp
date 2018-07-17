@@ -14,10 +14,10 @@ class FuzzyDedupTest : public ::testing::Test {
     nodes_[root_node_->BuildPath().native()] = root_node_.get();
   }
 
-  Node *AddDir(std::string const &native_path) {
+  Node *AddDir(const std::string &native_path) {
     Node *cur_node = root_node_.get();
     path cur_prefix = cur_node->BuildPath();
-    for (path const &component : path(native_path)) {
+    for (const path &component : path(native_path)) {
       cur_prefix /= component;
       auto it = nodes_.find(cur_prefix.native());
       if (it != nodes_.end()) {
@@ -34,7 +34,7 @@ class FuzzyDedupTest : public ::testing::Test {
     return cur_node;
   }
 
-  Cksum EqClass2Cksum(std::string const &eq_class) {
+  Cksum EqClass2Cksum(const std::string &eq_class) {
     auto res = class_cksums_.insert(std::make_pair(eq_class, unused_cksum_));
     if (res.second) {
       ++unused_cksum_;
@@ -42,7 +42,7 @@ class FuzzyDedupTest : public ::testing::Test {
     return res.first->second;
   }
 
-  Node *AddFile(std::string const &eq_class, std::string const &native,
+  Node *AddFile(const std::string &eq_class, const std::string &native,
                 off_t size) {
     path bpath(native);
     Node *parent = AddDir(bpath.parent_path().native());
@@ -73,13 +73,13 @@ class FuzzyDedupTest : public ::testing::Test {
     res_ = std::make_pair(root_node_, eq_classes);
   }
 
-  Node *FindNode(std::string const &p) {
+  Node *FindNode(const std::string &p) {
     auto it = nodes_.find(p);
     assert(it != nodes_.end());
     return it->second;
   }
 
-  void AssertDups(std::vector<std::string> const &paths) {
+  void AssertDups(const std::vector<std::string> &paths) {
     for (auto p = paths.begin(); p != paths.end(); p++) {
       auto next = p;
       ++next;
@@ -91,7 +91,7 @@ class FuzzyDedupTest : public ::testing::Test {
     }
   }
 
-  void AssertNotDups(std::vector<std::string> const &paths) {
+  void AssertNotDups(const std::vector<std::string> &paths) {
     for (auto p = paths.begin(); p != paths.end(); ++p) {
       auto next = p;
       ++next;

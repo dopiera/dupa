@@ -52,11 +52,11 @@ double Node::GetWeight() const {
     case DIR: {
       std::unordered_set<EqClass *> eq_classes;
       double weight = 0;
-      for (Node const *const n : children_) {
+      for (const Node *const n : children_) {
         assert(n->IsEvaluated());
         eq_classes.insert(&n->GetEqClass());
       }
-      for (EqClass const *const eq_class : eq_classes) {
+      for (const EqClass *const eq_class : eq_classes) {
         weight += eq_class->weight_;
       }
       return weight;
@@ -76,9 +76,9 @@ boost::filesystem::path Node::BuildPath() const {
 Nodes Node::GetPossibleEquivalents() const {
   assert(IsReadyToEvaluate());
   std::unordered_set<Node *> nodes;
-  for (Node const *child : children_) {
+  for (const Node *child : children_) {
     assert(child->IsEvaluated());
-    for (Node const *equivalent : child->eq_class_->nodes_) {
+    for (const Node *equivalent : child->eq_class_->nodes_) {
       assert(equivalent->IsEvaluated());
       if (equivalent != child && equivalent->parent_ &&
           equivalent->parent_->IsEvaluated() && equivalent->parent_ != this) {
@@ -96,15 +96,15 @@ void Node::Traverse(const std::function<void(Node *)> &callback) {
   callback(this);
 }
 
-void Node::Traverse(const std::function<void(Node const *)> &callback) const {
-  for (Node const *const child : children_) {
+void Node::Traverse(const std::function<void(const Node *)> &callback) const {
+  for (const Node *const child : children_) {
     child->Traverse(callback);
   }
   callback(this);
 }
 
-bool Node::IsAncestorOf(Node const &node) {
-  Node const *n = &node;
+bool Node::IsAncestorOf(const Node &node) {
+  const Node *n = &node;
   for (; n && n != this; n = n->parent_) {
     {
     }
@@ -112,7 +112,7 @@ bool Node::IsAncestorOf(Node const &node) {
   return n != nullptr;
 }
 
-double NodeDistance(Node const &n1, Node const &n2) {
+double NodeDistance(const Node &n1, const Node &n2) {
   assert(n1.IsReadyToEvaluate());
   assert(n2.IsReadyToEvaluate());
   // Not supported. All those comparisons should be done from outside using a
@@ -122,10 +122,10 @@ double NodeDistance(Node const &n1, Node const &n2) {
   std::unordered_map<EqClass *, bool> eq_classes1;
   std::unordered_set<EqClass *> eq_classes_only_2;
 
-  for (Node const *const n : n1.children_) {
+  for (const Node *const n : n1.children_) {
     eq_classes1.insert(std::make_pair(n->eq_class_, false));
   }
-  for (Node const *const n : n2.children_) {
+  for (const Node *const n : n2.children_) {
     auto in1_it = eq_classes1.find(n->eq_class_);
     if (in1_it == eq_classes1.end()) {
       eq_classes_only_2.insert(n->eq_class_);
@@ -137,14 +137,14 @@ double NodeDistance(Node const &n1, Node const &n2) {
   uint64_t sum = 0;
   uint64_t sym_diff = 0;
 
-  for (auto const &eq_class_and_intersect : eq_classes1) {
+  for (const auto &eq_class_and_intersect : eq_classes1) {
     sum += eq_class_and_intersect.first->weight_;
     if (!eq_class_and_intersect.second) {
       // only in n1
       sym_diff += eq_class_and_intersect.first->weight_;
     }
   }
-  for (EqClass const *const eq_class : eq_classes_only_2) {
+  for (const EqClass *const eq_class : eq_classes_only_2) {
     sum += eq_class->weight_;
     sym_diff += eq_class->weight_;
   }
@@ -166,22 +166,22 @@ void EqClass::AddNode(Node &node) {
 namespace {
 
 struct NodePathOrder : public std::binary_function<Node *, Node *, bool> {
-  bool operator()(Node const *n1, Node const *n2) const {
+  bool operator()(const Node *n1, const Node *n2) const {
     return n1->BuildPath().native() < n2->BuildPath().native();
   }
 };
 
 struct UniquenessOrder : public std::binary_function<Node *, Node *, bool> {
-  bool operator()(Node const *n1, Node const *n2) const {
+  bool operator()(const Node *n1, const Node *n2) const {
     return n1->unique_fraction_ > n2->unique_fraction_;
   }
 };
 
 }  // anonymous namespace
 
-void PrintEqClassses(std::vector<EqClass *> const &eq_classes) {
+void PrintEqClassses(const std::vector<EqClass *> &eq_classes) {
   std::cout << "*** Classes of similar directories or files:" << std::endl;
-  for (EqClass const *eq_class : eq_classes) {
+  for (const EqClass *eq_class : eq_classes) {
     Nodes to_print(eq_class->nodes_);
     std::sort(to_print.begin(), to_print.end(), NodePathOrder());
     for (auto node_it = to_print.begin(); node_it != to_print.end();
@@ -195,12 +195,12 @@ void PrintEqClassses(std::vector<EqClass *> const &eq_classes) {
   }
 }
 
-void PrintScatteredDirectories(Node const &root) {
+void PrintScatteredDirectories(const Node &root) {
   std::cout << "*** Directories consisting of mostly duplicates of files "
                "scattered elsewhere:"
             << std::endl;
   CNodes scattered_dirs;
-  root.Traverse([&scattered_dirs](Node const *n) {
+  root.Traverse([&scattered_dirs](const Node *n) {
     if (n->GetType() == Node::DIR &&
         n->unique_fraction_ * 100 < Conf().tolerable_diff_pct_ &&
         n->GetEqClass().IsSingle()) {
@@ -208,7 +208,7 @@ void PrintScatteredDirectories(Node const &root) {
     }
   });
   std::sort(scattered_dirs.begin(), scattered_dirs.end(), UniquenessOrder());
-  for (Node const *dir : scattered_dirs) {
+  for (const Node *dir : scattered_dirs) {
     std::cout << dir->BuildPath().native() << std::endl;
   }
 }
