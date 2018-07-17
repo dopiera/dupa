@@ -1,3 +1,5 @@
 - test for fuzzy_dedup
 - less brutal error handling
 - decouple file_tree from actions taken on it
+- refactor dupa.cpp
+- change table name Cache to something like FileList
