@@ -33,7 +33,7 @@ class Node {
         parent_(nullptr),
         eq_class_(nullptr),
         not_evaluated_children_() {
-    assert(!name.empty());
+    assert(!name_.empty());
     DLOG("Created file: '" << BuildPath().native() << "' with size " << size_
                            << " and type " << type_);
   }
