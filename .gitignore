@@ -12,7 +12,7 @@ Testing
 file_tree_test
 fuzzy_dedup_test
 scanner_test
-sql_lib_test
+db_lib_test
 cscope.*
 install_manifest.txt
 compile_commands.json

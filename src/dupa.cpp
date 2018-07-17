@@ -10,13 +10,13 @@
 #include <utility>
 
 #include "conf.h"
+#include "db_lib.h"
 #include "db_output.h"
 #include "file_tree.h"
 #include "fuzzy_dedup.h"
 #include "hash_cache.h"
 #include "log.h"
 #include "scanner_int.h"
-#include "sql_lib.h"
 #include "synch_thread_pool.h"
 
 namespace fs = boost::filesystem;
@@ -187,9 +187,9 @@ int main(int argc, char **argv) {
     }
     if (Conf().dirs_.size() == 1) {
       // Open database first to catch configuration issues soon.
-      std::unique_ptr<SqliteConnection> db(
-          Conf().sql_out_.empty() ? nullptr
-                                  : new SqliteConnection(Conf().sql_out_));
+      std::unique_ptr<DBConnection> db(Conf().sql_out_.empty()
+                                           ? nullptr
+                                           : new DBConnection(Conf().sql_out_));
       FuzzyDedupRes res = FuzzyDedup(Conf().dirs_[0]);
       if (!res.first) {
         // no nodes at all

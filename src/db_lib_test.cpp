@@ -1,4 +1,4 @@
-#include "sql_lib_impl.h"
+#include "db_lib_impl.h"
 
 #include <cstdlib>
 
@@ -31,15 +31,15 @@ class TmpDir {
   std::string dir_;
 };
 
-class SqliteTest : public ::testing::Test {
+class DBTest : public ::testing::Test {
  public:
-  SqliteTest()
+  DBTest()
       : db_(tmp_.dir_ + "/db.sqlite3"),
         data_{std::make_tuple(1, 0.1, "one"), std::make_tuple(2, 0.2, "two"),
               std::make_tuple(3, 0.3, "three"), std::make_tuple(4, 0.4, "four"),
               std::make_tuple(5, 0.5, "five")} {}
   void CreateTable() {
-    db_.SqliteExec(
+    db_.Exec(
         "CREATE TABLE Tbl("
         "id INT PRIMARY KEY     NOT NULL,"
         "dbl            DOUBLE  NOT NULL,"
@@ -47,7 +47,7 @@ class SqliteTest : public ::testing::Test {
         ");");
   }
   void InsertValues() {
-    auto out_stream = db_.BatchInsert<int, double, std::string>(
+    auto out_stream = db_.Prepare<int, double, std::string>(
         "INSERT INTO Tbl VALUES(?, ?, ?);");
     std::copy(data_.begin(), data_.end(), out_stream->begin());
   }
@@ -61,23 +61,23 @@ class SqliteTest : public ::testing::Test {
 
  protected:
   TmpDir tmp_;
-  SqliteConnection db_;
+  DBConnection db_;
   std::vector<std::tuple<int, float, const char *>> data_;
 };
 
-TEST_F(SqliteTest, TableCreate) { CreateTable(); }
+TEST_F(DBTest, TableCreate) { CreateTable(); }
 
-TEST_F(SqliteTest, DoubleTableCreate) {
+TEST_F(DBTest, DoubleTableCreate) {
   CreateTable();
-  EXPECT_THROW(CreateTable(), SqliteException);
+  EXPECT_THROW(CreateTable(), DBException);
 }
 
-TEST_F(SqliteTest, Inserting) {
+TEST_F(DBTest, Inserting) {
   CreateTable();
   InsertValues();
 }
 
-TEST_F(SqliteTest, InputIterator) {
+TEST_F(DBTest, InputIterator) {
   CreateTable();
   InsertValues();
   auto res =
@@ -86,7 +86,7 @@ TEST_F(SqliteTest, InputIterator) {
 
   // Stupid gtest macros fail when given template instantiation, because they
   // contain commas.
-  using InputIt = SqliteInputIt<int, float, std::string>;
+  using InputIt = DBInputIt<int, float, std::string>;
   ASSERT_EQ(InputIt(), res.end());
   auto it = res.begin();
   ASSERT_EQ(std::get<0>(*it), 1);
@@ -122,14 +122,14 @@ TEST_F(SqliteTest, InputIterator) {
   ASSERT_EQ(it2, res.end());
 }
 
-TEST_F(SqliteTest, EmptyInputIterator) {
+TEST_F(DBTest, EmptyInputIterator) {
   CreateTable();
   auto res =
       db_.Query<int, float, std::string>("SELECT * FROM Tbl ORDER BY id;");
   ASSERT_EQ(res.begin(), res.end());
 }
 
-TEST_F(SqliteTest, Querying) {
+TEST_F(DBTest, Querying) {
   CreateTable();
   InsertValues();
   auto res = QueryAllValues();
@@ -141,13 +141,13 @@ TEST_F(SqliteTest, Querying) {
   ASSERT_EQ(diff.second, res.end());
 }
 
-TEST_F(SqliteTest, InsertFail) {
+TEST_F(DBTest, InsertFail) {
   CreateTable();
   InsertValues();
 
   // duplicate key, should fail
-  EXPECT_THROW(db_.SqliteExec("INSERT INTO Tbl VALUES(4, 4.0, \"four\");"),
-               SqliteException);
+  EXPECT_THROW(db_.Exec("INSERT INTO Tbl VALUES(4, 4.0, \"four\");"),
+               DBException);
 
   auto res = QueryAllValues();
 
@@ -158,10 +158,10 @@ TEST_F(SqliteTest, InsertFail) {
   ASSERT_EQ(diff.second, res.end());
 }
 
-TEST_F(SqliteTest, SuccessfulTransaction) {
+TEST_F(DBTest, SuccessfulTransaction) {
   CreateTable();
   {
-    SqliteTransaction trans(db_);
+    DBTransaction trans(db_);
     InsertValues();
     trans.Commit();
   }
@@ -175,10 +175,10 @@ TEST_F(SqliteTest, SuccessfulTransaction) {
   ASSERT_EQ(diff.second, res.end());
 }
 
-TEST_F(SqliteTest, AbortedTransaction) {
+TEST_F(DBTest, AbortedTransaction) {
   CreateTable();
   {
-    SqliteTransaction trans(db_);
+    DBTransaction trans(db_);
     InsertValues();
     trans.Rollback();
   }
@@ -188,12 +188,12 @@ TEST_F(SqliteTest, AbortedTransaction) {
   ASSERT_TRUE(res.empty());
 }
 
-TEST_F(SqliteTest, AbortedByExceptionTransaction) {
+TEST_F(DBTest, AbortedByExceptionTransaction) {
   CreateTable();
   {
-    SqliteTransaction trans(db_);
+    DBTransaction trans(db_);
     InsertValues();
-    // SqliteTransaction is automatically destroyed like in an exception.
+    // DBTransaction is automatically destroyed like in an exception.
   }
 
   auto res = QueryAllValues();

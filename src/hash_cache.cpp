@@ -13,9 +13,9 @@
 
 #include <boost/functional/hash/hash.hpp>
 
+#include "db_lib_impl.h"
 #include "exceptions.h"
 #include "log.h"
-#include "sql_lib_impl.h"
 
 namespace {
 
@@ -120,7 +120,7 @@ Cksum ComputeCksum(int fd, InodeCache::Uuid uuid,
 std::unordered_map<std::string, FileInfo> ReadCacheFromDb(
     const std::string &path) {
   std::unordered_map<std::string, FileInfo> cache;
-  SqliteConnection db(path, SQLITE_OPEN_READONLY);
+  DBConnection db(path, SQLITE_OPEN_READONLY);
   for (const auto &[path, sum, size, mtime] :
        db.Query<std::string, Cksum, off_t, time_t>(
            "SELECT path, cksum, size, mtime FROM Cache")) {
@@ -150,14 +150,14 @@ HashCache::HashCache(const std::string &read_cache_from,
     cache_.swap(cache);
   }
   if (!dump_cache_to.empty()) {
-    db_ = std::make_unique<SqliteConnection>(dump_cache_to);
+    db_ = std::make_unique<DBConnection>(dump_cache_to);
   }
 }
 
 HashCache::~HashCache() { StoreCksums(); }
 
-static void CreateOrEmptyTable(SqliteConnection &db) {
-  db.SqliteExec(
+static void CreateOrEmptyTable(DBConnection &db) {
+  db.Exec(
       "DROP TABLE IF EXISTS Cache;"
       "CREATE TABLE Cache("
       "path           TEXT    UNIQUE NOT NULL,"
@@ -171,10 +171,10 @@ void HashCache::StoreCksums() {
   if (!db_) {
     return;
   }
-  SqliteConnection &db(*db_);
+  DBConnection &db(*db_);
   CreateOrEmptyTable(db);
-  SqliteTransaction trans(db);
-  auto out = db.BatchInsert<std::string, Cksum, off_t, time_t>(
+  DBTransaction trans(db);
+  auto out = db.Prepare<std::string, Cksum, off_t, time_t>(
       "INSERT INTO Cache(path, cksum, size, mtime) VALUES(?, ?, ?, ?)");
   std::transform(cache_.begin(), cache_.end(), out->begin(),
                  [](const std::pair<std::string, FileInfo> &file) {

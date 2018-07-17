@@ -1,43 +1,43 @@
 #include <utility>
 
-#include "sql_lib_impl.h"
+#include "db_lib_impl.h"
 
 #include "log.h"
 
-struct SqliteDeleter : public std::unary_function<void *, void> {
+struct DBDeleter : public std::unary_function<void *, void> {
   void operator()(void *p) const { sqlite3_free(p); }
 };
 
 template <class C>
-inline std::unique_ptr<C, SqliteDeleter> MakeSqliteUnique(C *o) {
-  return std::unique_ptr<C, SqliteDeleter>(o);
+inline std::unique_ptr<C, DBDeleter> MakeDBUnique(C *o) {
+  return std::unique_ptr<C, DBDeleter>(o);
 }
 
-//======== SqliteException =====================================================
+//======== DBException =========================================================
 
-SqliteException::SqliteException(int sqlite_code, const std::string &operation)
+DBException::DBException(int sqlite_code, const std::string &operation)
     : reason_(operation + ": " + sqlite3_errstr(sqlite_code)),
       sqlite_code_(sqlite_code) {}
 
-SqliteException::SqliteException(sqlite3 *db, const std::string &operation)
+DBException::DBException(sqlite3 *db, const std::string &operation)
     : reason_(operation + ": " + sqlite3_errmsg(db)),
       sqlite_code_(sqlite3_errcode(db)) {}
 
-SqliteException::SqliteException(std::string reason)
+DBException::DBException(std::string reason)
     : reason_(std::move(reason)), sqlite_code_(SQLITE_ERROR) {}
 
-SqliteException::~SqliteException() noexcept = default;
+DBException::~DBException() noexcept = default;
 
-const char *SqliteException::what() const noexcept { return reason_.c_str(); }
+const char *DBException::what() const noexcept { return reason_.c_str(); }
 
-int SqliteException::Code() const noexcept { return sqlite_code_; }
+int DBException::Code() const noexcept { return sqlite_code_; }
 
-//======== SqliteConnection ====================================================
+//======== DBConnection ========================================================
 
-SqliteConnection::SqliteConnection(const std::string &path, int flags) {
+DBConnection::DBConnection(const std::string &path, int flags) {
   int res = sqlite3_open_v2(path.c_str(), &db_, flags, nullptr);
   if (res != SQLITE_OK) {
-    throw SqliteException(res, "Opening DB " + path);
+    throw DBException(res, "Opening DB " + path);
   }
   // I don't care about consistency. This data is easilly regneratable.
   const char sql[] =
@@ -50,13 +50,13 @@ SqliteConnection::SqliteConnection(const std::string &path, int flags) {
   char *err_msg_raw;
   res = sqlite3_exec(db_, sql, nullptr, nullptr, &err_msg_raw);
   if (res != SQLITE_OK) {
-    auto err_msg = MakeSqliteUnique(err_msg_raw);
-    throw SqliteException(
-        db_, std::string("Creating results tables: ") + err_msg.get());
+    auto err_msg = MakeDBUnique(err_msg_raw);
+    throw DBException(db_,
+                      std::string("Creating results tables: ") + err_msg.get());
   }
 }
 
-SqliteConnection::~SqliteConnection() {
+DBConnection::~DBConnection() {
   int res = sqlite3_close(db_);
   if (res != SQLITE_OK) {
     // Let's not crash the whole program and simply log it.
@@ -66,34 +66,32 @@ SqliteConnection::~SqliteConnection() {
   }
 }
 
-SqliteConnection::StmtPtr SqliteConnection::PrepareStmt(
-    const std::string &sql) {
+DBConnection::StmtPtr DBConnection::PrepareStmt(const std::string &sql) {
   sqlite3_stmt *raw_stmt_ptr;
   int res = sqlite3_prepare_v2(db_, sql.c_str(), -1, &raw_stmt_ptr, nullptr);
   if (res != SQLITE_OK) {
-    throw SqliteException(db_, std::string("Preparing statement: ") + sql);
+    throw DBException(db_, std::string("Preparing statement: ") + sql);
   }
   return StmtPtr(raw_stmt_ptr);
 }
 
-void SqliteConnection::SqliteExec(const std::string &sql) {
+void DBConnection::Exec(const std::string &sql) {
   char *err_msg_raw;
   int res = sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &err_msg_raw);
   if (res != SQLITE_OK) {
-    auto err_msg = MakeSqliteUnique(err_msg_raw);
-    throw SqliteException(
+    auto err_msg = MakeDBUnique(err_msg_raw);
+    throw DBException(
         db_, std::string("Executing SQL (") + sql + "): " + err_msg.get());
   }
 }
 
-//======== SqliteTransaction ===================================================
+//======== DBTransaction =======================================================
 
-SqliteTransaction::SqliteTransaction(SqliteConnection &conn)
-    : conn_(conn), ongoing_(true) {
-  conn_.SqliteExec("BEGIN TRANSACTION");
+DBTransaction::DBTransaction(DBConnection &conn) : conn_(conn), ongoing_(true) {
+  conn_.Exec("BEGIN TRANSACTION");
 }
 
-SqliteTransaction::~SqliteTransaction() {
+DBTransaction::~DBTransaction() {
   if (ongoing_) {
     // If this fails, the application is going to die, which is good because
     // if we can't roll back, we better not risk committing bad data.
@@ -101,12 +99,12 @@ SqliteTransaction::~SqliteTransaction() {
   }
 }
 
-void SqliteTransaction::Rollback() {
-  conn_.SqliteExec("ROLLBACK TRANSACTION");
+void DBTransaction::Rollback() {
+  conn_.Exec("ROLLBACK TRANSACTION");
   ongoing_ = false;
 }
 
-void SqliteTransaction::Commit() {
-  conn_.SqliteExec("COMMIT TRANSACTION");
+void DBTransaction::Commit() {
+  conn_.Exec("COMMIT TRANSACTION");
   ongoing_ = false;
 }

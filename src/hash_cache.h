@@ -11,7 +11,7 @@
 
 #include <boost/filesystem/path.hpp>
 
-#include "sql_lib.h"
+#include "db_lib.h"
 
 using Cksum = uint64_t;
 
@@ -52,7 +52,7 @@ class HashCache {
 
   using CacheMap = std::unordered_map<std::string, FileInfo>;
   CacheMap cache_;
-  std::unique_ptr<SqliteConnection> db_;
+  std::unique_ptr<DBConnection> db_;
   std::mutex mutex_;
 };
 

@@ -2,10 +2,10 @@
 
 #include <new>
 
-#include "sql_lib_impl.h"
+#include "db_lib_impl.h"
 
-void CreateResultsDatabase(SqliteConnection &db) {
-  db.SqliteExec(
+void CreateResultsDatabase(DBConnection &db) {
+  db.Exec(
       "DROP TABLE IF EXISTS Node;"
       "DROP TABLE IF EXISTS EqClass;"
       "CREATE TABLE EqClass("
@@ -25,11 +25,11 @@ void CreateResultsDatabase(SqliteConnection &db) {
       "ON UPDATE RESTRICT ON DELETE RESTRICT);");
 }
 
-void DumpInterestingEqClasses(SqliteConnection &db,
+void DumpInterestingEqClasses(DBConnection &db,
                               const std::vector<EqClass *> &eq_classes) {
-  SqliteTransaction trans(db);
-  auto out = db.BatchInsert<uintptr_t>(
-      "UPDATE EqClass SET interesting = 1 WHERE id == ?");
+  DBTransaction trans(db);
+  auto out =
+      db.Prepare<uintptr_t>("UPDATE EqClass SET interesting = 1 WHERE id == ?");
   std::transform(
       eq_classes.begin(), eq_classes.end(), out->begin(),
       [](EqClass *eq_class_ptr) {
@@ -38,10 +38,10 @@ void DumpInterestingEqClasses(SqliteConnection &db,
   trans.Commit();
 }
 
-void DumpFuzzyDedupRes(SqliteConnection &db, const FuzzyDedupRes &res) {
-  SqliteTransaction trans(db);
+void DumpFuzzyDedupRes(DBConnection &db, const FuzzyDedupRes &res) {
+  DBTransaction trans(db);
 
-  auto class_out = db.BatchInsert<uintptr_t, size_t, double>(
+  auto class_out = db.Prepare<uintptr_t, size_t, double>(
       "INSERT INTO EqClass(id, nodes, weight, interesting) "
       "VALUES(?, ?, ?, 0)");
 
@@ -52,8 +52,8 @@ void DumpFuzzyDedupRes(SqliteConnection &db, const FuzzyDedupRes &res) {
                        eq_class->GetNumNodes(), eq_class->GetWeight());
                  });
 
-  auto node_out = db.BatchInsert<uintptr_t, std::string, std::string,
-                                 std::string, double, uintptr_t>(
+  auto node_out = db.Prepare<uintptr_t, std::string, std::string, std::string,
+                             double, uintptr_t>(
       "INSERT INTO Node("
       "id, name, path, type, unique_fraction, eq_class) "
       "VALUES(?, ?, ?, ?, ?, ?)");

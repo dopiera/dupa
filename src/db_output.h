@@ -5,12 +5,12 @@
 #include <memory>
 #include <string>
 
+#include "db_lib.h"
 #include "fuzzy_dedup.h"
-#include "sql_lib.h"
 
-void CreateResultsDatabase(SqliteConnection &db);
-void DumpFuzzyDedupRes(SqliteConnection &db, const FuzzyDedupRes &res);
-void DumpInterestingEqClasses(SqliteConnection &db,
+void CreateResultsDatabase(DBConnection &db);
+void DumpFuzzyDedupRes(DBConnection &db, const FuzzyDedupRes &res);
+void DumpInterestingEqClasses(DBConnection &db,
                               const std::vector<EqClass *> &eq_classes);
 
 #endif  // SRC_DB_OUTPUT_H_

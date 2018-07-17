@@ -1,4 +1,3 @@
 - test for fuzzy_dedup
-- pick better names for sql_lib.h
 - less brutal error handling
 - decouple file_tree from actions taken on it
