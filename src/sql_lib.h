@@ -130,12 +130,12 @@ class InStreamHolder {
   explicit InStreamHolder(std::shared_ptr<InStream<ARGS...>> impl)
       : impl_(std::move(std::move(impl))) {}
   InStreamHolder(const InStreamHolder<ARGS...> &o) : impl_(o.impl) {}
-  std::tuple<ARGS...> Read() { return this->impl_->Read(); }
-  bool Eof() const { return this->impl_->Eof(); }
-  SqliteInputIt<ARGS...> begin() { return this->impl_->begin(); }  // NOLINT
-  SqliteInputIt<ARGS...> end() { return this->impl_->end(); }      // NOLINT
+  std::tuple<ARGS...> Read() { return impl_->Read(); }
+  bool Eof() const { return impl_->Eof(); }
+  SqliteInputIt<ARGS...> begin() { return impl_->begin(); }  // NOLINT
+  SqliteInputIt<ARGS...> end() { return impl_->end(); }      // NOLINT
   InStreamHolder<ARGS...> &operator=(const InStreamHolder &o) {
-    this->impl_ = o.impl_;
+    impl_ = o.impl_;
   }
 
  private:

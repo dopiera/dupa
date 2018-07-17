@@ -15,17 +15,16 @@ class TmpDir {
     if (!mkdtemp(tmp_dir)) {
       throw FsException(errno, "Creating a temp directory");
     }
-    this->dir_ = tmp_dir;
+    dir_ = tmp_dir;
   }
 
   ~TmpDir() {
     try {
-      boost::filesystem::remove_all(this->dir_);
+      boost::filesystem::remove_all(dir_);
     } catch (const boost::filesystem::filesystem_error &e) {
       LOG(ERROR, std::string("Failed to remove temp test directory "
                              "because (") +
-                     e.what() + "), leaving garbage behind (" + this->dir_ +
-                     ")");
+                     e.what() + "), leaving garbage behind (" + dir_ + ")");
     }
   }
 
@@ -40,7 +39,7 @@ class SqliteTest : public ::testing::Test {
               std::make_tuple(3, 0.3, "three"), std::make_tuple(4, 0.4, "four"),
               std::make_tuple(5, 0.5, "five")} {}
   void CreateTable() {
-    this->db_.SqliteExec(
+    db_.SqliteExec(
         "CREATE TABLE Tbl("
         "id INT PRIMARY KEY     NOT NULL,"
         "dbl            DOUBLE  NOT NULL,"
@@ -48,14 +47,14 @@ class SqliteTest : public ::testing::Test {
         ");");
   }
   void InsertValues() {
-    auto out_stream = this->db_.BatchInsert<int, double, std::string>(
+    auto out_stream = db_.BatchInsert<int, double, std::string>(
         "INSERT INTO Tbl VALUES(?, ?, ?);");
-    std::copy(this->data_.begin(), this->data_.end(), out_stream->begin());
+    std::copy(data_.begin(), data_.end(), out_stream->begin());
   }
   std::vector<std::tuple<int, float, std::string>> QueryAllValues() {
     std::vector<std::tuple<int, float, std::string>> res;
-    auto in_stream = this->db_.Query<int, float, std::string>(
-        "SELECT * FROM Tbl ORDER BY id;");
+    auto in_stream =
+        db_.Query<int, float, std::string>("SELECT * FROM Tbl ORDER BY id;");
     std::copy(in_stream.begin(), in_stream.end(), std::back_inserter(res));
     return res;
   }
@@ -66,23 +65,23 @@ class SqliteTest : public ::testing::Test {
   std::vector<std::tuple<int, float, char const *>> data_;
 };
 
-TEST_F(SqliteTest, TableCreate) { this->CreateTable(); }
+TEST_F(SqliteTest, TableCreate) { CreateTable(); }
 
 TEST_F(SqliteTest, DoubleTableCreate) {
-  this->CreateTable();
-  EXPECT_THROW(this->CreateTable(), SqliteException);
+  CreateTable();
+  EXPECT_THROW(CreateTable(), SqliteException);
 }
 
 TEST_F(SqliteTest, Inserting) {
-  this->CreateTable();
-  this->InsertValues();
+  CreateTable();
+  InsertValues();
 }
 
 TEST_F(SqliteTest, InputIterator) {
-  this->CreateTable();
-  this->InsertValues();
-  auto res = this->db_.Query<int, float, std::string>(
-      "SELECT * FROM Tbl ORDER BY id;");
+  CreateTable();
+  InsertValues();
+  auto res =
+      db_.Query<int, float, std::string>("SELECT * FROM Tbl ORDER BY id;");
   ASSERT_EQ(res.end(), res.end());
 
   // Stupid gtest macros fail when given template instantiation, because they
@@ -124,84 +123,80 @@ TEST_F(SqliteTest, InputIterator) {
 }
 
 TEST_F(SqliteTest, EmptyInputIterator) {
-  this->CreateTable();
-  auto res = this->db_.Query<int, float, std::string>(
-      "SELECT * FROM Tbl ORDER BY id;");
+  CreateTable();
+  auto res =
+      db_.Query<int, float, std::string>("SELECT * FROM Tbl ORDER BY id;");
   ASSERT_EQ(res.begin(), res.end());
 }
 
 TEST_F(SqliteTest, Querying) {
-  this->CreateTable();
-  this->InsertValues();
-  auto res = this->QueryAllValues();
+  CreateTable();
+  InsertValues();
+  auto res = QueryAllValues();
 
-  ASSERT_EQ(this->data_.size(), res.size());
-  auto diff =
-      std::mismatch(this->data_.begin(), this->data_.end(), res.begin());
+  ASSERT_EQ(data_.size(), res.size());
+  auto diff = std::mismatch(data_.begin(), data_.end(), res.begin());
 
-  ASSERT_EQ(diff.first, this->data_.end());
+  ASSERT_EQ(diff.first, data_.end());
   ASSERT_EQ(diff.second, res.end());
 }
 
 TEST_F(SqliteTest, InsertFail) {
-  this->CreateTable();
-  this->InsertValues();
+  CreateTable();
+  InsertValues();
 
   // duplicate key, should fail
-  EXPECT_THROW(
-      this->db_.SqliteExec("INSERT INTO Tbl VALUES(4, 4.0, \"four\");"),
-      SqliteException);
+  EXPECT_THROW(db_.SqliteExec("INSERT INTO Tbl VALUES(4, 4.0, \"four\");"),
+               SqliteException);
 
-  auto res = this->QueryAllValues();
+  auto res = QueryAllValues();
 
-  ASSERT_EQ(this->data_.size(), res.size());
-  auto diff =
-      std::mismatch(this->data_.begin(), this->data_.end(), res.begin());
+  ASSERT_EQ(data_.size(), res.size());
+  auto diff = std::mismatch(data_.begin(), data_.end(), res.begin());
 
-  ASSERT_EQ(diff.first, this->data_.end());
+  ASSERT_EQ(diff.first, data_.end());
   ASSERT_EQ(diff.second, res.end());
 }
 
 TEST_F(SqliteTest, SuccessfulTransaction) {
-  this->CreateTable();
+  CreateTable();
   {
-    SqliteTransaction trans(this->db_);
-    this->InsertValues();
+    SqliteTransaction trans(db_);
+    InsertValues();
     trans.Commit();
   }
 
-  auto res = this->QueryAllValues();
+  auto res = QueryAllValues();
 
-  ASSERT_EQ(this->data_.size(), res.size());
-  auto diff =
-      std::mismatch(this->data_.begin(), this->data_.end(), res.begin());
+  ASSERT_EQ(data_.size(), res.size());
+  auto diff = std::mismatch(data_.begin(), data_.end(), res.begin());
 
-  ASSERT_EQ(diff.first, this->data_.end());
+  ASSERT_EQ(diff.first, data_.end());
   ASSERT_EQ(diff.second, res.end());
 }
 
 TEST_F(SqliteTest, AbortedTransaction) {
-  this->CreateTable();
+  CreateTable();
   {
-    SqliteTransaction trans(this->db_);
-    this->InsertValues();
+    SqliteTransaction trans(db_);
+    InsertValues();
     trans.Rollback();
   }
 
-  auto res = this->QueryAllValues();
+  auto res = QueryAllValues();
 
   ASSERT_TRUE(res.empty());
 }
 
 TEST_F(SqliteTest, AbortedByExceptionTransaction) {
-  this->CreateTable();
+  CreateTable();
   {
-    SqliteTransaction trans(this->db_);
-    this->InsertValues();
+    SqliteTransaction trans(db_);
+    InsertValues();
     // SqliteTransaction is automatically destroyed like in an exception.
   }
 
-  auto res = this->QueryAllValues();
+  auto res = QueryAllValues();
 
   ASSERT_TRUE(res.empty());
 }

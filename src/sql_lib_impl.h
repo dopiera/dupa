@@ -141,7 +141,7 @@ std::tuple<ARGS...> Extract(sqlite3 &db, sqlite3_stmt &row) {
 
 template <typename... ARGS>
 const std::tuple<ARGS...> &SqliteInputIt<ARGS...>::operator*() const {
-  return this->value_;
+  return value_;
 }
 
 template <typename... ARGS>
@@ -151,14 +151,14 @@ const std::tuple<ARGS...> *SqliteInputIt<ARGS...>::operator->() const {
 
 template <typename... ARGS>
 SqliteInputIt<ARGS...> &SqliteInputIt<ARGS...>::operator++() {
-  assert(this->stream_);
+  assert(stream_);
   Fetch();
   return *this;
 }
 
 template <typename... ARGS>
 SqliteInputIt<ARGS...> SqliteInputIt<ARGS...>::operator++(int) {
-  assert(this->stream_);
+  assert(stream_);
   SqliteInputIt tmp = *this;
   Fetch();
   return tmp;
@@ -166,8 +166,8 @@ SqliteInputIt<ARGS...> SqliteInputIt<ARGS...>::operator++(int) {
 
 template <typename... ARGS>
 bool SqliteInputIt<ARGS...>::operator==(const SqliteInputIt<ARGS...> &o) const {
-  if (this->stream_) {
-    return this->stream_ == o.stream_;
+  if (stream_) {
+    return stream_ == o.stream_;
   }
   return !o.stream_;
 }
@@ -179,11 +179,11 @@ bool SqliteInputIt<ARGS...>::operator!=(const SqliteInputIt<ARGS...> &o) const {
 
 template <typename... ARGS>
 void SqliteInputIt<ARGS...>::Fetch() {
-  if (this->stream_) {
-    if (this->stream_->Eof()) {
-      this->stream_ = nullptr;
+  if (stream_) {
+    if (stream_->Eof()) {
+      stream_ = nullptr;
     } else {
-      this->value_ = stream_->Read();
+      value_ = stream_->Read();
     }
   }
 }
@@ -201,7 +201,7 @@ inline void DispatchImpl(OutStream<ARGS...> &stream,
 template <typename... ARGS>
 SqliteOutputIt<ARGS...> &SqliteOutputIt<ARGS...>::operator=(
     std::tuple<ARGS...> const &args) {
-  DispatchImpl(*this->stream_, args, std::index_sequence_for<ARGS...>());
+  DispatchImpl(*stream_, args, std::index_sequence_for<ARGS...>());
   return *this;
 }
 
@@ -217,7 +217,7 @@ void SqliteBind(sqlite3_stmt &s, ARGS... args) {
 template <typename... ARGS>
 InStreamHolder<ARGS...> SqliteConnection::Query(const std::string &sql) {
   auto in_stream = std::shared_ptr<InStream<ARGS...>>(
-      new InStream<ARGS...>(*this, this->PrepareStmt(sql)));
+      new InStream<ARGS...>(*this, PrepareStmt(sql)));
   return InStreamHolder<ARGS...>(in_stream);
 }
 
@@ -225,22 +225,22 @@ template <typename... ARGS>
 std::unique_ptr<OutStream<ARGS...>> SqliteConnection::BatchInsert(
     const std::string &sql) {
   return std::unique_ptr<OutStream<ARGS...>>(
-      new OutStream<ARGS...>(*this, this->PrepareStmt(sql)));
+      new OutStream<ARGS...>(*this, PrepareStmt(sql)));
 }
 
 //======== InStream ============================================================
 
 template <typename... ARGS>
 void InStream<ARGS...>::Fetch() {
-  this->next_row_.reset();
+  next_row_.reset();
   const int res = sqlite3_step(stmt_.get());
   switch (res) {
     case SQLITE_DONE:
-      this->stmt_.reset();
+      stmt_.reset();
       break;
     case SQLITE_ROW:
-      this->next_row_.reset(new std::tuple<ARGS...>(
-          detail::Extract<ARGS...>(*this->conn_.db_, *stmt_)));
+      next_row_.reset(new std::tuple<ARGS...>(
+          detail::Extract<ARGS...>(*conn_.db_, *stmt_)));
       break;
       // Consider special handling of SQLITE_OK to indicate misuse
     default:
@@ -256,14 +256,14 @@ InStream<ARGS...>::InStream(SqliteConnection &conn, StmtPtr &&stmt)
 
 template <typename... ARGS>
 std::tuple<ARGS...> InStream<ARGS...>::Read() {
-  std::unique_ptr<std::tuple<ARGS...>> res(std::move(this->next_row_));
+  std::unique_ptr<std::tuple<ARGS...>> res(std::move(next_row_));
   Fetch();
   return *res;
 }
 
 template <typename... ARGS>
 bool InStream<ARGS...>::Eof() const {
-  return !this->next_row_;
+  return !next_row_;
 }
 
 template <typename... ARGS>
@@ -284,19 +284,18 @@ OutStream<ARGS...>::OutStream(SqliteConnection &conn, detail::StmtPtr &&stmt)
 
 template <typename... ARGS>
 void OutStream<ARGS...>::Write(const ARGS &... args) {
-  SqliteBind(*this->stmt_, args...);
-  int res = sqlite3_step(this->stmt_.get());
+  SqliteBind(*stmt_, args...);
+  int res = sqlite3_step(stmt_.get());
   if (res != SQLITE_DONE) {
-    throw SqliteException(this->conn_.db_, "Advancing output stream");
+    throw SqliteException(conn_.db_, "Advancing output stream");
   }
-  res = sqlite3_clear_bindings(this->stmt_.get());
+  res = sqlite3_clear_bindings(stmt_.get());
   if (res != SQLITE_OK) {
-    throw SqliteException(this->conn_.db_, "Clearing output stream bindings");
+    throw SqliteException(conn_.db_, "Clearing output stream bindings");
   }
-  res = sqlite3_reset(this->stmt_.get());
+  res = sqlite3_reset(stmt_.get());
   if (res != SQLITE_OK) {
-    throw SqliteException(this->conn_.db_,
-                          "Resetting statement in output stream");
+    throw SqliteException(conn_.db_, "Resetting statement in output stream");
   }
 }
 

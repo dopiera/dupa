@@ -6,58 +6,56 @@ SyncThreadPool::SyncThreadPool(int concurrency)
     : closing_(false), outstanding_(0) {
   assert(concurrency > 0);
   for (int i = 0; i < concurrency; ++i) {
-    this->threads_.emplace_back(std::make_unique<std::thread>(
+    threads_.emplace_back(std::make_unique<std::thread>(
         std::bind(&SyncThreadPool::ThreadLoop, this)));
   }
 }
 
 void SyncThreadPool::Stop() {
   {
-    std::unique_lock<std::mutex> lock(this->mutex_);
-    this->user_cv_.wait(lock, [this] { return this->outstanding_ == 0; });
-    this->closing_ = true;
+    std::unique_lock<std::mutex> lock(mutex_);
+    user_cv_.wait(lock, [this] { return outstanding_ == 0; });
+    closing_ = true;
   }
-  this->cv_.notify_all();
-  for (auto &thread : this->threads_) {
+  cv_.notify_all();
+  for (auto &thread : threads_) {
     thread->join();
   }
-  this->threads_.clear();
+  threads_.clear();
 }
 
 void SyncThreadPool::Submit(std::function<void()> const &fun) {
-  std::unique_lock<std::mutex> lock(this->mutex_);
-  assert(!this->closing_);
-  this->user_cv_.wait(
-      lock, [this] { return this->outstanding_ <= this->threads_.size(); });
-  assert(!this->closing_);
-  this->q_.push(fun);
-  ++this->outstanding_;
-  this->cv_.notify_one();
+  std::unique_lock<std::mutex> lock(mutex_);
+  assert(!closing_);
+  user_cv_.wait(lock, [this] { return outstanding_ <= threads_.size(); });
+  assert(!closing_);
+  q_.push(fun);
+  ++outstanding_;
+  cv_.notify_one();
 }
 
 SyncThreadPool::~SyncThreadPool() {
-  this->Stop();
-  assert(this->closing_);
-  assert(this->threads_.empty());
+  Stop();
+  assert(closing_);
+  assert(threads_.empty());
 }
 
 void SyncThreadPool::ThreadLoop() {
   while (true) {
     std::function<void()> task;
     {
-      std::unique_lock<std::mutex> lock(this->mutex_);
-      if (this->closing_) {
+      std::unique_lock<std::mutex> lock(mutex_);
+      if (closing_) {
         return;
       }
-      this->cv_.wait(lock,
-                     [this] { return !this->q_.empty() || this->closing_; });
-      if (this->closing_) {
+      cv_.wait(lock, [this] { return !q_.empty() || closing_; });
+      if (closing_) {
         return;
       }
       task = q_.front();
       q_.pop();
-      --this->outstanding_;
-      this->user_cv_.notify_one();
+      --outstanding_;
+      user_cv_.notify_one();
     }
     task();
   }
@@ -66,20 +64,20 @@ void SyncThreadPool::ThreadLoop() {
 SyncCounter::SyncCounter(size_t initial) : cntr_(initial) {}
 
 void SyncCounter::Increment() {
-  std::lock_guard<std::mutex> lock(this->m_);
-  ++this->cntr_;
+  std::lock_guard<std::mutex> lock(m_);
+  ++cntr_;
 }
 
 void SyncCounter::Decrement() {
-  std::lock_guard<std::mutex> lock(this->m_);
-  assert(this->cntr_ > 0);
-  if (this->cntr_-- == 0) {
-    this->cv_.notify_all();
+  std::lock_guard<std::mutex> lock(m_);
+  assert(cntr_ > 0);
+  if (cntr_-- == 0) {
+    cv_.notify_all();
   }
 }
 
 void SyncCounter::WaitForZero() {
-  std::unique_lock<std::mutex> lock(this->m_);
-  this->cv_.wait(lock, [this] { return this->cntr_ == 0; });
-  assert(this->cntr_ == 0);
+  std::unique_lock<std::mutex> lock(m_);
+  cv_.wait(lock, [this] { return cntr_ == 0; });
+  assert(cntr_ == 0);
 }

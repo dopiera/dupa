@@ -36,17 +36,17 @@ class InodeCache {
   };
 
   std::pair<bool, Cksum> Get(Uuid ino) {
-    std::lock_guard<std::mutex> lock(this->mutex_);
-    auto it = this->cache_map_.find(ino);
-    if (it != this->cache_map_.end()) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = cache_map_.find(ino);
+    if (it != cache_map_.end()) {
       return std::make_pair(true, it->second);
     }
     return std::make_pair(false, 0);
   }
 
   void Update(Uuid ino, Cksum sum) {
-    std::lock_guard<std::mutex> lock(this->mutex_);
-    this->cache_map_.insert(std::make_pair(ino, sum));
+    std::lock_guard<std::mutex> lock(mutex_);
+    cache_map_.insert(std::make_pair(ino, sum));
   }
 
   static StatResult GetInodeInfo(int fd, std::string const &path_for_errors) {
@@ -146,15 +146,15 @@ HashCache::HashCache(std::string const &read_cache_from,
                      std::string const &dump_cache_to) {
   if (!read_cache_from.empty()) {
     auto cache = ReadCacheFromDb(read_cache_from);
-    std::lock_guard<std::mutex> lock(this->mutex_);
-    this->cache_.swap(cache);
+    std::lock_guard<std::mutex> lock(mutex_);
+    cache_.swap(cache);
   }
   if (!dump_cache_to.empty()) {
-    this->db_ = std::make_unique<SqliteConnection>(dump_cache_to);
+    db_ = std::make_unique<SqliteConnection>(dump_cache_to);
   }
 }
 
-HashCache::~HashCache() { this->StoreCksums(); }
+HashCache::~HashCache() { StoreCksums(); }
 
 static void CreateOrEmptyTable(SqliteConnection &db) {
   db.SqliteExec(
@@ -167,16 +167,16 @@ static void CreateOrEmptyTable(SqliteConnection &db) {
 }
 
 void HashCache::StoreCksums() {
-  std::lock_guard<std::mutex> lock(this->mutex_);
-  if (!this->db_) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (!db_) {
     return;
   }
-  SqliteConnection &db(*this->db_);
+  SqliteConnection &db(*db_);
   CreateOrEmptyTable(db);
   SqliteTransaction trans(db);
   auto out = db.BatchInsert<std::string, Cksum, off_t, time_t>(
       "INSERT INTO Cache(path, cksum, size, mtime) VALUES(?, ?, ?, ?)");
-  std::transform(this->cache_.begin(), this->cache_.end(), out->begin(),
+  std::transform(cache_.begin(), cache_.end(), out->begin(),
                  [](const std::pair<std::string, FileInfo> &file) {
                    return std::make_tuple(file.first, file.second.sum_,
                                           file.second.size_,
@@ -215,9 +215,9 @@ FileInfo HashCache::operator()(boost::filesystem::path const &p) {
 
   InodeCache::StatResult stat_res = InodeCache::GetInodeInfo(fd, native);
   {
-    std::lock_guard<std::mutex> lock(this->mutex_);
-    auto it = this->cache_.find(p.native());
-    if (it != this->cache_.end()) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = cache_.find(p.native());
+    if (it != cache_.end()) {
       FileInfo const &cached = it->second;
       if (cached.size_ == stat_res.size_ && cached.mtime_ == stat_res.mtime_) {
         return it->second;
@@ -227,12 +227,12 @@ FileInfo HashCache::operator()(boost::filesystem::path const &p) {
   Cksum cksum = ComputeCksum(fd, stat_res.id_, native);
   FileInfo res(stat_res.size_, stat_res.mtime_, cksum);
 
-  std::lock_guard<std::mutex> lock(this->mutex_);
+  std::lock_guard<std::mutex> lock(mutex_);
   // If some other thread inserted a checksum for the same file in the
   // meantime, it's not a big deal.
-  this->cache_[p.native()] = res;
-  if (this->cache_.size() % 1000 == 0) {
-    LOG(INFO, "Cache size: " << this->cache_.size());
+  cache_[p.native()] = res;
+  if (cache_.size() % 1000 == 0) {
+    LOG(INFO, "Cache size: " << cache_.size());
   }
   return res;
 }

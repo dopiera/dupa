@@ -26,16 +26,16 @@ class Node {
   };
 
   // Size is only meaningful for regular files.
-  Node(Type type, std::string const &name, off_t size = 0)
-      : name_(name),
+  Node(Type type, std::string name, off_t size = 0)
+      : name_(std::move(name)),
         type_(type),
         size_(size),
         parent_(nullptr),
         eq_class_(nullptr),
         not_evaluated_children_() {
     assert(!name.empty());
-    DLOG("Created file: '" << this->BuildPath().native() << "' with size "
-                           << this->size_ << " and type " << this->type_);
+    DLOG("Created file: '" << BuildPath().native() << "' with size " << size_
+                           << " and type " << type_);
   }
   Node(const Node &n) = delete;
   Node &operator=(const Node &n) = delete;
@@ -47,11 +47,11 @@ class Node {
     assert(eq_class_);
     return *eq_class_;
   }
-  Type GetType() const { return this->type_; }
+  Type GetType() const { return type_; }
   bool IsEmptyDir() const { return GetType() == DIR && children_.empty(); }
   boost::filesystem::path BuildPath() const;
   double GetWeight() const;
-  std::string const &GetName() const { return this->name_; }
+  std::string const &GetName() const { return name_; }
   Node *GetParent() { return parent_; }
   // Return all nodes which are evaluated and share a child with this one.
   Nodes GetPossibleEquivalents() const;
@@ -59,7 +59,7 @@ class Node {
   // order and call callback on every node
   void Traverse(const std::function<void(Node *)> &callback);
   void Traverse(const std::function<void(Node const *)> &callback) const;
-  Nodes const &GetChildren() const { return this->children_; }
+  Nodes const &GetChildren() const { return children_; }
   bool IsAncestorOf(Node const &node);
 
   ~Node();
@@ -94,8 +94,8 @@ class EqClass {
 
   bool IsEmpty() const { return nodes_.empty(); }
   bool IsSingle() const { return nodes_.size() == 1; }
-  double GetWeight() const { return this->weight_; }
-  size_t GetNumNodes() const { return this->nodes_.size(); }
+  double GetWeight() const { return weight_; }
+  size_t GetNumNodes() const { return nodes_.size(); }
 
   void AddNode(Node &node);  // does not take ownership
   Nodes nodes_;

@@ -17,12 +17,12 @@ void Node::AddChild(Node *child) {
   assert(!child->IsEvaluated());  // This is due to not_evaluated_children
   assert(type_ == DIR);
   child->parent_ = this;
-  this->children_.push_back(child);
-  ++this->not_evaluated_children_;
+  children_.push_back(child);
+  ++not_evaluated_children_;
 }
 
 Node::~Node() {
-  for (Node *n : this->children_) {
+  for (Node *n : children_) {
     delete n;
   }
 }
@@ -30,10 +30,10 @@ Node::~Node() {
 void Node::SetEqClass(EqClass *eq_class) {
   assert(IsReadyToEvaluate());
   assert(!IsEvaluated());
-  this->eq_class_ = eq_class;
-  if (this->parent_) {
-    assert(this->parent_->not_evaluated_children_);
-    --this->parent_->not_evaluated_children_;
+  eq_class_ = eq_class;
+  if (parent_) {
+    assert(parent_->not_evaluated_children_);
+    --parent_->not_evaluated_children_;
   }
 }
 
@@ -45,14 +45,14 @@ double Node::GetWeight() const {
   switch (type_) {
     case FILE:
       if (Conf().use_size_) {
-        return this->size_;
+        return size_;
       } else {
         return 1;
       }
     case DIR: {
       std::unordered_set<EqClass *> eq_classes;
       double weight = 0;
-      for (Node const *const n : this->children_) {
+      for (Node const *const n : children_) {
         assert(n->IsEvaluated());
         eq_classes.insert(&n->GetEqClass());
       }
@@ -74,9 +74,9 @@ boost::filesystem::path Node::BuildPath() const {
 }
 
 Nodes Node::GetPossibleEquivalents() const {
-  assert(this->IsReadyToEvaluate());
+  assert(IsReadyToEvaluate());
   std::unordered_set<Node *> nodes;
-  for (Node const *child : this->children_) {
+  for (Node const *child : children_) {
     assert(child->IsEvaluated());
     for (Node const *equivalent : child->eq_class_->nodes_) {
       assert(equivalent->IsEvaluated());
@@ -90,14 +90,14 @@ Nodes Node::GetPossibleEquivalents() const {
 }
 
 void Node::Traverse(const std::function<void(Node *)> &callback) {
-  for (Node *const child : this->children_) {
+  for (Node *const child : children_) {
     child->Traverse(callback);
   }
   callback(this);
 }
 
 void Node::Traverse(const std::function<void(Node const *)> &callback) const {
-  for (Node const *const child : this->children_) {
+  for (Node const *const child : children_) {
     child->Traverse(callback);
   }
   callback(this);
