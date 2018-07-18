@@ -10,7 +10,8 @@
 
 #include <boost/filesystem/path.hpp>
 
-struct SyncCounter {
+class SyncCounter {
+ public:
   explicit SyncCounter(size_t initial = 0);
   void Increment();
   void Decrement();
@@ -22,7 +23,8 @@ struct SyncCounter {
   volatile size_t cntr_;
 };
 
-struct SyncThreadPool {
+class SyncThreadPool {
+ public:
   explicit SyncThreadPool(int concurrency);
 
   // All Submit() calls should finish before this can be called; This needs to
