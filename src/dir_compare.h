@@ -4,7 +4,6 @@
 #include <boost/filesystem/path.hpp>
 
 void WarmupCache(const boost::filesystem::path &path);
-void DirCompare(const boost::filesystem::path &dir1,
-                const boost::filesystem::path &dir2);
+void DirCompare(const std::string &dir1, const std::string &dir2);
 
 #endif /* SRC_DIR_COMPARE_H_ */

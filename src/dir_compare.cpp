@@ -67,14 +67,14 @@ class PathHashesFiller : public ScanProcessor<fs::path> {
   PathHashes &hashes_;
 };
 
-PathHashes FillPathHashes(const fs::path &start_dir) {
+PathHashes FillPathHashes(const std::string &start_dir) {
   PathHashes res;
   PathHashesFiller processor(res);
-  ScanDirectory(start_dir, processor);
+  ScanDirectoryOrDb(start_dir, processor);
   return res;
 }
 
-void WarmupCache(const fs::path &path) { FillPathHashes(path); }
+void WarmupCache(const fs::path &path) { FillPathHashes(path.native()); }
 
 Paths GetPathsForHash(PathHashesByHash &ps, Cksum hash) {
   Paths res;
@@ -84,13 +84,11 @@ Paths GetPathsForHash(PathHashesByHash &ps, Cksum hash) {
   return res;
 }
 
-void DirCompare(const fs::path &dir1, const fs::path &dir2) {
+void DirCompare(const std::string &dir1, const std::string &dir2) {
   PathHashes hashes1, hashes2;
 
-  std::thread h1filler(
-      [&dir1, &hashes1]() { hashes1 = FillPathHashes(dir1.native()); });
-  std::thread h2filler(
-      [&dir2, &hashes2]() { hashes2 = FillPathHashes(dir2.native()); });
+  std::thread h1filler([&dir1, &hashes1]() { hashes1 = FillPathHashes(dir1); });
+  std::thread h2filler([&dir2, &hashes2]() { hashes2 = FillPathHashes(dir2); });
   h1filler.join();
   h2filler.join();
 
