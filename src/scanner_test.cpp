@@ -1,3 +1,4 @@
+#include <memory>
 #include <utility>
 
 #include "scanner_int.h"
@@ -26,6 +27,8 @@ struct NodePtrComparator {
 class Node {
  public:
   explicit Node(std::string name) : name_(std::move(name)) {}
+  explicit Node(std::string name, std::set<NodePtr, NodePtrComparator> entries)
+      : name_(std::move(name)), entries_(std::move(entries)) {}
   virtual ~Node() = default;
 
   virtual bool IsFile() const { return !IsDir(); }
@@ -37,7 +40,6 @@ class Node {
   std::string name_;
   std::set<NodePtr, NodePtrComparator> entries_;
 };
-
 bool NodePtrComparator::operator()(const NodePtr &n1, const NodePtr &n2) const {
   return n1->name_ < n2->name_;
 }
@@ -51,8 +53,58 @@ class File : public Node {
 class Dir : public Node {
  public:
   explicit Dir(const std::string &name) : Node(name) {}
+  explicit Dir(std::string name, std::set<NodePtr, NodePtrComparator> entries)
+      : Node(std::move(name), std::move(entries)) {}
   bool IsDir() const override { return true; }
 };
+
+NodePtr F(const std::string name) { return std::make_shared<File>(name); }
+
+NodePtr D(const std::string &name,
+          const std::set<NodePtr, NodePtrComparator> &entries) {
+  return std::make_shared<Dir>(name, entries);
+}
+
+bool CompareTrees(NodePtr t1, NodePtr t2) {
+  if (t1->name_ != t2->name_) {
+    return false;
+  }
+  if (t1->IsDir() != t2->IsDir()) {
+    return false;
+  }
+
+  auto t1i = t1->entries_.begin(), t2i = t2->entries_.begin();
+  for (; t1i != t1->entries_.end() && t2i != t2->entries_.end(); ++t1i, ++t2i) {
+    if (!CompareTrees(*t1i, *t2i)) {
+      return false;
+    }
+  }
+  if (t1i == t1->entries_.end() && t2i == t2->entries_.end()) {
+    return true;
+  }
+  return false;
+}
+
+template <typename S>
+void PrintTree(S &stream, const NodePtr &t, std::string indent) {
+  if (t->IsDir()) {
+    stream << indent << "[" << t->name_ << "]" << std::endl;
+    for (const auto c : t->entries_) {
+      PrintTree(stream, c, indent + "  ");
+    }
+  } else {
+    stream << indent << t->name_ << std::endl;
+  }
+}
+
+bool operator==(const NodePtr &t1, const NodePtr &t2) {
+  return CompareTrees(t1, t2);
+}
+
+std::ostream &operator<<(std::ostream &stream, const NodePtr &t) {
+  PrintTree(stream, t, "");
+  return stream;
+}
 
 class TestProcessor : public ScanProcessor<NodePtr> {
  public:
@@ -84,10 +136,7 @@ TEST(DbImport, OneFile) {
           {"/ala/ma/kota", fi},
       },
       p);
-  ASSERT_TRUE(p.root_->IsDir());
-  ASSERT_EQ(p.root_->name_, "/ala/ma");
-  ASSERT_EQ(p.root_->entries_.size(), 1U);
-  ASSERT_EQ((*p.root_->entries_.begin())->name_, "kota");
+  ASSERT_EQ(p.root_, D("/ala/ma", {F("kota")}));
 }
 
 TEST(DbImport, RootPrefix) {
@@ -99,23 +148,10 @@ TEST(DbImport, RootPrefix) {
           {"/bob/ma/kota", fi},
       },
       p);
-  ASSERT_TRUE(p.root_->IsDir());
-  ASSERT_EQ(p.root_->name_, "/");
-  ASSERT_EQ(p.root_->Size(), 2U);
-  const NodePtr ala = p.root_->Nth(0);
-  const NodePtr bob = p.root_->Nth(1);
-  ASSERT_EQ(ala->name_, "ala");
-  ASSERT_EQ(ala->Size(), 1U);
-  ASSERT_EQ(ala->Nth(0)->name_, "ma");
-  ASSERT_EQ(ala->Nth(0)->Size(), 1U);
-  ASSERT_TRUE(ala->Nth(0)->Nth(0)->IsFile());
-  ASSERT_EQ(ala->Nth(0)->Nth(0)->name_, "kota");
-  ASSERT_EQ(bob->name_, "bob");
-  ASSERT_EQ(bob->Size(), 1U);
-  ASSERT_EQ(bob->Nth(0)->name_, "ma");
-  ASSERT_EQ(bob->Nth(0)->Size(), 1U);
-  ASSERT_TRUE(bob->Nth(0)->Nth(0)->IsFile());
-  ASSERT_EQ(bob->Nth(0)->Nth(0)->name_, "kota");
+  ASSERT_EQ(p.root_, D("/", {
+                                D("ala", {D("ma", {F("kota")})}),
+                                D("bob", {D("ma", {F("kota")})}),
+                            }));
 }
 
 TEST(DbImport, EmptyPrefix) {
@@ -127,23 +163,10 @@ TEST(DbImport, EmptyPrefix) {
           {"bob/ma/kota", fi},
       },
       p);
-  ASSERT_TRUE(p.root_->IsDir());
-  ASSERT_EQ(p.root_->name_, "");
-  ASSERT_EQ(p.root_->Size(), 2U);
-  const NodePtr ala = p.root_->Nth(0);
-  const NodePtr bob = p.root_->Nth(1);
-  ASSERT_EQ(ala->name_, "ala");
-  ASSERT_EQ(ala->Size(), 1U);
-  ASSERT_EQ(ala->Nth(0)->name_, "ma");
-  ASSERT_EQ(ala->Nth(0)->Size(), 1U);
-  ASSERT_TRUE(ala->Nth(0)->Nth(0)->IsFile());
-  ASSERT_EQ(ala->Nth(0)->Nth(0)->name_, "kota");
-  ASSERT_EQ(bob->name_, "bob");
-  ASSERT_EQ(bob->Size(), 1U);
-  ASSERT_EQ(bob->Nth(0)->name_, "ma");
-  ASSERT_EQ(bob->Nth(0)->Size(), 1U);
-  ASSERT_TRUE(bob->Nth(0)->Nth(0)->IsFile());
-  ASSERT_EQ(bob->Nth(0)->Nth(0)->name_, "kota");
+  ASSERT_EQ(p.root_, D("", {
+                               D("ala", {D("ma", {F("kota")})}),
+                               D("bob", {D("ma", {F("kota")})}),
+                           }));
 }
 
 TEST(DbImport, NontrivialPrefix) {
@@ -155,15 +178,7 @@ TEST(DbImport, NontrivialPrefix) {
           {"ala/ma/psa", fi},
       },
       p);
-  ASSERT_TRUE(p.root_->IsDir());
-  ASSERT_EQ(p.root_->name_, "ala/ma");
-  ASSERT_EQ(p.root_->Size(), 2U);
-  const NodePtr ala = p.root_->Nth(0);
-  const NodePtr bob = p.root_->Nth(1);
-  ASSERT_TRUE(ala->IsFile());
-  ASSERT_EQ(ala->name_, "kota");
-  ASSERT_TRUE(bob->IsFile());
-  ASSERT_EQ(bob->name_, "psa");
+  ASSERT_EQ(p.root_, D("ala/ma", {F("kota"), F("psa")}));
 }
 
 TEST(DbImport, NontrivialAbsolutePrefix) {
@@ -175,15 +190,7 @@ TEST(DbImport, NontrivialAbsolutePrefix) {
           {"/ala/ma/psa", fi},
       },
       p);
-  ASSERT_TRUE(p.root_->IsDir());
-  ASSERT_EQ(p.root_->name_, "/ala/ma");
-  ASSERT_EQ(p.root_->Size(), 2U);
-  const NodePtr ala = p.root_->Nth(0);
-  const NodePtr bob = p.root_->Nth(1);
-  ASSERT_TRUE(ala->IsFile());
-  ASSERT_EQ(ala->name_, "kota");
-  ASSERT_TRUE(bob->IsFile());
-  ASSERT_EQ(bob->name_, "psa");
+  ASSERT_EQ(p.root_, D("/ala/ma", {F("kota"), F("psa")}));
 }
 
 TEST(DbImport, ComplexTest) {
@@ -196,19 +203,6 @@ TEST(DbImport, ComplexTest) {
           {"/ala/ma/malego/kota", fi},
       },
       p);
-  ASSERT_TRUE(p.root_->IsDir());
-  ASSERT_EQ(p.root_->name_, "/ala/ma");
-  ASSERT_EQ(p.root_->Size(), 2U);
-  const NodePtr big = p.root_->Nth(0);
-  const NodePtr small = p.root_->Nth(1);
-  ASSERT_TRUE(big->IsDir());
-  ASSERT_EQ(big->name_, "duzego");
-  ASSERT_EQ(big->Size(), 2U);
-  ASSERT_EQ(big->Nth(0)->name_, "kota");
-  ASSERT_EQ(big->Nth(1)->name_, "psa");
-  ASSERT_TRUE(small->IsDir());
-  ASSERT_EQ(small->name_, "malego");
-  ASSERT_EQ(small->Size(), 1U);
-  ASSERT_EQ(small->Nth(0)->name_, "kota");
-  ASSERT_EQ(small->Nth(0)->name_, "kota");
+  ASSERT_EQ(p.root_, D("/ala/ma", {D("duzego", {F("kota"), F("psa")}),
+                                   D("malego", {F("kota")})}));
 }
