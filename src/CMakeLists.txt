@@ -50,6 +50,8 @@ target_link_libraries(hash_cache_lib db_lib)
 
 add_library(scanner_lib scanner.cpp)
 target_link_libraries(scanner_lib ${Boost_LIBRARIES})
+target_link_libraries(scanner_lib synch_thread_pool_lib)
+target_link_libraries(scanner_lib hash_cache_lib)
 
 add_executable(scanner_test scanner_test.cpp)
 target_link_libraries(scanner_test scanner_lib)
