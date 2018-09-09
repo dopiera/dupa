@@ -14,4 +14,12 @@ void PrintTo(const path &p, std::ostream *os);
 } /* namespace filesystem */
 } /* namespace boost */
 
+class TmpDir {
+ public:
+  TmpDir();
+  ~TmpDir();
+
+  std::string dir_;
+};
+
 #endif  // SRC_TEST_COMMON_H_

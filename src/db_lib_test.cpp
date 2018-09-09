@@ -7,29 +7,7 @@
 #include "exceptions.h"
 #include "gtest/gtest.h"
 #include "log.h"
-
-class TmpDir {
- public:
-  TmpDir() {
-    char tmp_dir[] = "/tmp/dupa.XXXXXX";
-    if (!mkdtemp(tmp_dir)) {
-      throw FsException(errno, "Creating a temp directory");
-    }
-    dir_ = tmp_dir;
-  }
-
-  ~TmpDir() {
-    try {
-      boost::filesystem::remove_all(dir_);
-    } catch (const boost::filesystem::filesystem_error &e) {
-      LOG(ERROR, std::string("Failed to remove temp test directory "
-                             "because (") +
-                     e.what() + "), leaving garbage behind (" + dir_ + ")");
-    }
-  }
-
-  std::string dir_;
-};
+#include "test_common.h"
 
 class DBTest : public ::testing::Test {
  public:
