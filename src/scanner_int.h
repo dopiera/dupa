@@ -4,6 +4,7 @@
 #include "scanner.h"
 
 #include <map>
+#include <optional>
 #include <stack>
 #include <thread>
 #include <utility>
@@ -27,38 +28,66 @@ void ScanDirectory(const boost::filesystem::path &root,
                    ScanProcessor<DIR_HANDLE> &processor) {
   using boost::filesystem::path;
 
-  std::stack<std::pair<path, DIR_HANDLE>> dirs_to_process;
-  dirs_to_process.push(std::make_pair(root, processor.RootDir(root)));
+  // The path to directory and handle to its parent. In case of root directory,
+  // empty option is held.
+  std::stack<std::pair<path, std::optional<DIR_HANDLE>>> dirs_to_process;
+  dirs_to_process.push(std::make_pair(root, std::optional<DIR_HANDLE>()));
 
   SyncThreadPool pool(Conf().concurrency_);
   std::mutex mutex;
 
   while (!dirs_to_process.empty()) {
     const path dir = dirs_to_process.top().first;
-    const DIR_HANDLE handle = dirs_to_process.top().second;
+    const auto maybe_parent_handle = dirs_to_process.top().second;
 
     dirs_to_process.pop();
 
     using boost::filesystem::directory_iterator;
-    for (directory_iterator it(dir); it != directory_iterator(); ++it) {
-      if (is_symlink(it->path())) {
-        continue;
-      }
-      const path new_path = it->path();
-      if (is_directory(it->status())) {
-        std::lock_guard<std::mutex> lock(mutex);
-        dirs_to_process.push(
-            std::make_pair(new_path, processor.Dir(new_path, handle)));
-      }
-      if (boost::filesystem::is_regular(new_path)) {
-        pool.Submit([new_path, handle, &mutex, &processor]() mutable {
-          const FileInfo f_info = HashCache::Get()(new_path);
-          if (f_info.sum_) {
-            std::lock_guard<std::mutex> lock(mutex);
-            processor.File(new_path, handle, f_info);
+    try {
+      // Create the iterator before the loop so that we get an exception here if
+      // we have no access to the directory.
+      directory_iterator it(dir);
+      // Add this directory only after we made sure we can browse it.
+      const DIR_HANDLE handle =
+          maybe_parent_handle.has_value()
+              ? processor.Dir(dir.filename(), maybe_parent_handle.value())
+              : processor.RootDir(dir);
+
+      for (; it != directory_iterator(); ++it) {
+        try {
+          if (is_symlink(it->path())) {
+            continue;
           }
-        });
+          const path new_path = it->path();
+          if (is_directory(it->status())) {
+            std::lock_guard<std::mutex> lock(mutex);
+            dirs_to_process.push(std::make_pair(new_path, handle));
+          }
+          if (boost::filesystem::is_regular(new_path)) {
+            pool.Submit([new_path, handle, &mutex, &processor]() mutable {
+              try {
+                const FileInfo f_info = HashCache::Get()(new_path);
+                if (f_info.sum_) {
+                  std::lock_guard<std::mutex> lock(mutex);
+                  processor.File(new_path.filename(), handle, f_info);
+                }
+              } catch (const std::exception &e) {
+                LOG(ERROR, "skipping \"" << new_path.native()
+                                         << "\" because analyzing it yielded "
+                                         << e.what());
+              }
+            });
+          }
+        } catch (const std::exception &e) {
+          LOG(ERROR, "skipping \"" << it->path().native()
+                                   << "\" because analyzing it yielded "
+                                   << e.what());
+        }
       }
+    } catch (const std::exception &e) {
+      LOG(ERROR, "skipping \"" << dir.native()
+                               << "\" because descending into it yielded "
+                               << e.what());
     }
   }
 }

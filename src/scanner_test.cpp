@@ -58,14 +58,14 @@ class Dir : public Node {
   bool IsDir() const override { return true; }
 };
 
-NodePtr F(const std::string name) { return std::make_shared<File>(name); }
+NodePtr F(const std::string &name) { return std::make_shared<File>(name); }
 
 NodePtr D(const std::string &name,
           const std::set<NodePtr, NodePtrComparator> &entries) {
   return std::make_shared<Dir>(name, entries);
 }
 
-bool CompareTrees(NodePtr t1, NodePtr t2) {
+bool CompareTrees(const NodePtr &t1, const NodePtr &t2) {
   if (t1->name_ != t2->name_) {
     return false;
   }
@@ -79,17 +79,14 @@ bool CompareTrees(NodePtr t1, NodePtr t2) {
       return false;
     }
   }
-  if (t1i == t1->entries_.end() && t2i == t2->entries_.end()) {
-    return true;
-  }
-  return false;
+  return (t1i == t1->entries_.end() && t2i == t2->entries_.end());
 }
 
 template <typename S>
 void PrintTree(S &stream, const NodePtr &t, std::string indent) {
   if (t->IsDir()) {
     stream << indent << "[" << t->name_ << "]" << std::endl;
-    for (const auto c : t->entries_) {
+    for (const auto &c : t->entries_) {
       PrintTree(stream, c, indent + "  ");
     }
   } else {
@@ -205,4 +202,132 @@ TEST(DbImport, ComplexTest) {
       p);
   ASSERT_EQ(p.root_, D("/ala/ma", {D("duzego", {F("kota"), F("psa")}),
                                    D("malego", {F("kota")})}));
+}
+
+TEST(FileSystem, EmptyDir) {
+  TmpDir t;
+  TestProcessor p;
+  ScanDirectory(t.dir_, p);
+  ASSERT_EQ(p.root_, D(t.dir_, {}));
+}
+
+TEST(FileSystem, OneEmptyEntry) {
+  TmpDir t;
+  t.CreateFile("t");
+  TestProcessor p;
+  HashCache::Initializer hash_cache_init("", "");
+  ScanDirectory(t.dir_, p);
+  // We're deliberately ignoring 0-long files.
+  ASSERT_EQ(p.root_, D(t.dir_, {}));
+}
+
+TEST(FileSystem, OneEntryNonEmpty) {
+  TmpDir t;
+  t.CreateFile("t", "a");
+  TestProcessor p;
+  HashCache::Initializer hash_cache_init("", "");
+  ScanDirectory(t.dir_, p);
+  ASSERT_EQ(p.root_, D(t.dir_, {F("t")}));
+}
+
+TEST(FileSystem, NestedEmptyDirs) {
+  TmpDir t;
+  t.CreateSubdir("dir1");
+  t.CreateSubdir("dir2");
+  t.CreateSubdir("dir2/dir21");
+  t.CreateSubdir("dir2/dir22");
+  TestProcessor p;
+  HashCache::Initializer hash_cache_init("", "");
+  ScanDirectory(t.dir_, p);
+  ASSERT_EQ(p.root_, D(t.dir_, {D("dir1", {}),
+                                D("dir2", {D("dir21", {}), D("dir22", {})})}));
+}
+
+TEST(FileSystem, ComplexStructure) {
+  TmpDir t;
+  t.CreateFile("dir1/file1", "a");
+  t.CreateFile("dir1/empty1");
+  t.CreateFile("dir1/dir11/file111", "a");
+  t.CreateFile("file1", "b");
+  t.CreateFile("empty1");
+  TestProcessor p;
+  HashCache::Initializer hash_cache_init("", "");
+  ScanDirectory(t.dir_, p);
+  ASSERT_EQ(p.root_,
+            D(t.dir_, {D("dir1", {F("file1"), D("dir11", {F("file111")})}),
+                       F("file1")}));
+}
+
+TEST(FileSystem, NonExistentDir) {
+  TmpDir t;
+  TestProcessor p;
+  HashCache::Initializer hash_cache_init("", "");
+  ScanDirectory(t.dir_ + "/nonexistent", p);
+  ASSERT_FALSE(p.root_);
+}
+
+TEST(FileSystem, DirWithNoReadPerm) {
+  TmpDir t;
+  TestProcessor p;
+  HashCache::Initializer hash_cache_init("", "");
+  t.Chmod(".", 0100);
+  ScanDirectory(t.dir_, p);
+  ASSERT_FALSE(p.root_);
+}
+
+TEST(FileSystem, DirWithNoExecPerm) {
+  TmpDir t;
+  TestProcessor p;
+  HashCache::Initializer hash_cache_init("", "");
+  t.CreateFile("asd", "a");
+  t.Chmod(".", 0400);
+  ScanDirectory(t.dir_, p);
+  // Successfully lists the directory but fails to analyze its contents.
+  ASSERT_EQ(p.root_, D(t.dir_, {}));
+}
+
+TEST(FileSystem, FileWithNoReadPerm) {
+  TmpDir t;
+  TestProcessor p;
+  HashCache::Initializer hash_cache_init("", "");
+  t.CreateFile("asd", "a");
+  t.Chmod("asd", 0000);
+  ScanDirectory(t.dir_, p);
+  ASSERT_EQ(p.root_, D(t.dir_, {}));
+}
+
+TEST(FileSystem, BadFileDoesntAffectOthers) {
+  TmpDir t;
+  TestProcessor p;
+  HashCache::Initializer hash_cache_init("", "");
+  t.CreateFile("a", "a");
+  t.CreateFile("asd", "a");
+  t.Chmod("asd", 0000);
+  t.CreateFile("qwe", "a");
+  ScanDirectory(t.dir_, p);
+  ASSERT_EQ(p.root_, D(t.dir_, {F("a"), F("qwe")}));
+}
+
+TEST(FileSystem, DirWithNoReadPermDoesntAffectOthers) {
+  TmpDir t;
+  TestProcessor p;
+  HashCache::Initializer hash_cache_init("", "");
+  t.CreateSubdir("asd");
+  t.CreateFile("a", "a");
+  t.Chmod("asd", 0100);
+  t.CreateFile("qwe", "a");
+  ScanDirectory(t.dir_, p);
+  ASSERT_EQ(p.root_, D(t.dir_, {F("a"), F("qwe")}));
+}
+
+TEST(FileSystem, DirWithNoExecPermDoesntAffectOthers) {
+  TmpDir t;
+  TestProcessor p;
+  HashCache::Initializer hash_cache_init("", "");
+  t.CreateSubdir("asd");
+  t.CreateFile("a", "a");
+  t.Chmod("asd", 0400);
+  t.CreateFile("qwe", "a");
+  ScanDirectory(t.dir_, p);
+  ASSERT_EQ(p.root_, D(t.dir_, {F("a"), D("asd", {}), F("qwe")}));
 }

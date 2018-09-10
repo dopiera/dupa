@@ -18,6 +18,13 @@ class TmpDir {
  public:
   TmpDir();
   ~TmpDir();
+  // Create a hierarchy od subdirectories inside this dir.
+  void CreateSubdir(const boost::filesystem::path &p);
+  // Create a file under a subdirectory of this dir. Intermediate dirs are
+  // created automatically.
+  void CreateFile(const boost::filesystem::path &p,
+                  const std::string &content = std::string());
+  void Chmod(const boost::filesystem::path &p, int perm);
 
   std::string dir_;
 };
