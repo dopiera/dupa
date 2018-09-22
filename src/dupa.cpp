@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
         }
       }
     } else if (Conf().dirs_.size() == 2) {
-      DirCompare(Conf().dirs_[0], Conf().dirs_[1]);
+      DirCompare(Conf().dirs_[0], Conf().dirs_[1], PrintingOutputStream());
       return 0;
     } else {
       // Should have been checked already.

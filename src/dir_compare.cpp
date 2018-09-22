@@ -29,6 +29,35 @@ S &operator<<(S &stream, const Paths &p) {
   return stream;
 }
 
+void PrintingOutputStream::OverwrittenBy(
+    const std::string &f, const std::vector<std::string> &candidates) const {
+  std::cout << "OVERWRITTEN_BY: " << f << " CANDIDATES: " << candidates
+            << std::endl;
+}
+
+void PrintingOutputStream::CopiedFrom(
+    const std::string &f, const std::vector<std::string> &candidates) const {
+  std::cout << "COPIED_FROM: " << f << " CANDIDATES: " << candidates
+            << std::endl;
+}
+
+void PrintingOutputStream::Rename(const std::string &f,
+                                  const std::vector<std::string> &to) const {
+  std::cout << "RENAME: " << f << " -> " << to << std::endl;
+}
+
+void PrintingOutputStream::ContentChanged(const std::string &f) const {
+  std::cout << "CONTENT_CHANGED: " << f << std::endl;
+}
+
+void PrintingOutputStream::Removed(const std::string &f) const {
+  std::cout << "REMOVED: " << f << std::endl;
+}
+
+void PrintingOutputStream::NewFile(const std::string &f) const {
+  std::cout << "NEW_FILE: " << f << std::endl;
+}
+
 struct PathHash {
   PathHash(std::string path, Cksum hash)
       : path_(std::move(path)), hash_(hash) {}
@@ -74,7 +103,7 @@ PathHashes FillPathHashes(const std::string &start_dir) {
   return res;
 }
 
-void WarmupCache(const fs::path &path) { FillPathHashes(path.native()); }
+void WarmupCache(const std::string &path) { FillPathHashes(path); }
 
 Paths GetPathsForHash(PathHashesByHash &ps, Cksum hash) {
   Paths res;
@@ -84,7 +113,8 @@ Paths GetPathsForHash(PathHashesByHash &ps, Cksum hash) {
   return res;
 }
 
-void DirCompare(const std::string &dir1, const std::string &dir2) {
+void DirCompare(const std::string &dir1, const std::string &dir2,
+                const CompareOutputStream &stream) {
   PathHashes hashes1, hashes2;
 
   std::thread h1filler([&dir1, &hashes1]() { hashes1 = FillPathHashes(dir1); });
@@ -110,20 +140,19 @@ void DirCompare(const std::string &dir1, const std::string &dir2) {
         Paths ps = GetPathsForHash(hashes1h, h2);
         if (!ps.empty()) {
           // rename from somewhere:
-          std::cout << "OVERWRITTEN_BY: " << p1 << " CANDIDATES: " << ps
-                    << std::endl;
+          stream.OverwrittenBy(p1, ps);
         } else {
-          std::cout << "CONTENT_CHANGED: " << p1 << std::endl;
+          stream.ContentChanged(p1);
         }
       }
     } else {
       Paths ps = GetPathsForHash(hashes2h, h1);
       if (!ps.empty()) {
         if (!Conf().skip_renames_) {
-          std::cout << "RENAME: " << p1 << " -> " << ps << std::endl;
+          stream.Rename(p1, ps);
         }
       } else {
-        std::cout << "REMOVED: " << p1 << std::endl;
+        stream.Removed(p1);
       }
     }
   }
@@ -146,11 +175,10 @@ void DirCompare(const std::string &dir1, const std::string &dir2) {
         // already mentioned
       }
       if (!ps2.empty()) {
-        std::cout << "COPIED_FROM: " << p2 << " CANDIDATES: " << ps2
-                  << std::endl;
+        stream.CopiedFrom(p2, ps2);
       }
     } else {
-      std::cout << "NEW_FILE: " << p2 << std::endl;
+      stream.NewFile(p2);
     }
   }
 }
