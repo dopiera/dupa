@@ -1,6 +1,5 @@
 - test for fuzzy_dedup
 - add the possibility to dump errors to a DB
 - decouple file_tree from actions taken on it
-- change table name Cache to something like FileList
 - allow for preparing query statements (i.e. prepare statement, then bind it and
     only then create an input stream)

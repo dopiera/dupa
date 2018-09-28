@@ -123,7 +123,7 @@ std::unordered_map<std::string, FileInfo> ReadCacheFromDb(
   DBConnection db(path, SQLITE_OPEN_READONLY);
   for (const auto &[path, sum, size, mtime] :
        db.Query<std::string, Cksum, off_t, time_t>(
-           "SELECT path, cksum, size, mtime FROM Cache")) {
+           "SELECT path, cksum, size, mtime FROM FileList")) {
     DLOG("Read \"" << path << "\": " << sum << " " << size << " " << mtime);
 
     FileInfo f_info(size, mtime, sum);
@@ -158,8 +158,8 @@ HashCache::~HashCache() { StoreCksums(); }
 
 static void CreateOrEmptyTable(DBConnection &db) {
   db.Exec(
-      "DROP TABLE IF EXISTS Cache;"
-      "CREATE TABLE Cache("
+      "DROP TABLE IF EXISTS FileList;"
+      "CREATE TABLE FileList("
       "path           TEXT    UNIQUE NOT NULL,"
       "cksum          INTEGER NOT NULL,"
       "size           INTEGER NOT NULL,"
@@ -175,7 +175,7 @@ void HashCache::StoreCksums() {
   CreateOrEmptyTable(db);
   DBTransaction trans(db);
   auto out = db.Prepare<std::string, Cksum, off_t, time_t>(
-      "INSERT INTO Cache(path, cksum, size, mtime) VALUES(?, ?, ?, ?)");
+      "INSERT INTO FileList(path, cksum, size, mtime) VALUES(?, ?, ?, ?)");
   std::transform(cache_.begin(), cache_.end(), out->begin(),
                  [](const std::pair<std::string, FileInfo> &file) {
                    return std::make_tuple(file.first, file.second.sum_,
