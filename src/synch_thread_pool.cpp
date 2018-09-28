@@ -16,8 +16,8 @@ void SyncThreadPool::Stop() {
     std::unique_lock<std::mutex> lock(mutex_);
     user_cv_.wait(lock, [this] { return outstanding_ == 0; });
     closing_ = true;
+    cv_.notify_all();
   }
-  cv_.notify_all();
   for (auto &thread : threads_) {
     thread->join();
   }
