@@ -48,11 +48,14 @@ void ScanDirectory(const boost::filesystem::path &root,
       // we have no access to the directory.
       directory_iterator it(dir);
       // Add this directory only after we made sure we can browse it.
-      const DIR_HANDLE handle =
-          maybe_parent_handle.has_value()
-              ? processor.Dir(dir.filename(), maybe_parent_handle.value())
-              : processor.RootDir(dir);
-
+      DIR_HANDLE handle;
+      {
+        std::lock_guard<std::mutex> lock(mutex);
+        handle =
+            maybe_parent_handle.has_value()
+                ? processor.Dir(dir.filename(), maybe_parent_handle.value())
+                : processor.RootDir(dir);
+      }
       for (; it != directory_iterator(); ++it) {
         try {
           if (is_symlink(it->path())) {
