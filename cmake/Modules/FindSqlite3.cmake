@@ -1,9 +1,26 @@
+# (C) Copyright 2018 Marek Dopiera
+#
+# This file is part of dupa.
+#
+# dupa is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# dupa is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public
+# License along with dupa. If not, see http://www.gnu.org/licenses/.
+
 # - Try to find Sqlite3
 # Once done this will define
-#  Sqlite3_FOUND - System has LibXml2
-#  Sqlite3_INCLUDE_DIRS - The LibXml2 include directories
-#  Sqlite3_LIBRARIES - The libraries needed to use LibXml2
-#  Sqlite3_DEFINITIONS - Compiler switches required for using LibXml2
+#  Sqlite3_FOUND - System has Sqlite3
+#  Sqlite3_INCLUDE_DIRS - The Sqlite3 include directories
+#  Sqlite3_LIBRARIES - The libraries needed to use Sqlite3
+#  Sqlite3_DEFINITIONS - Compiler switches required for using Sqlite3
 
 find_package(PkgConfig)
 pkg_check_modules(PC_Sqlite3 QUIET sqlite3)
