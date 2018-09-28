@@ -65,3 +65,72 @@ void DumpFuzzyDedupRes(DBConnection &db, const FuzzyDedupRes &res) {
   });
   trans.Commit();
 }
+
+DirCompDBStream::DirCompDBStream(DBConnection &conn)
+    : conn_(conn), trans_(conn) {
+  conn.Exec(
+      "DROP TABLE IF EXISTS Removed;"
+      "DROP TABLE IF EXISTS NewFile;"
+      "DROP TABLE IF EXISTS ContentChanged;"
+      "DROP TABLE IF EXISTS OverwrittenBy;"
+      "DROP TABLE IF EXISTS CopiedFrom;"
+      "DROP TABLE IF EXISTS RenameTo;"
+      "CREATE TABLE Removed("
+      "path            TEXT    NOT NULL UNIQUE);"
+      "CREATE TABLE NewFile("
+      "path            TEXT    NOT NULL UNIQUE);"
+      "CREATE TABLE ContentChanged("
+      "path            TEXT    NOT NULL UNIQUE);"
+      "CREATE TABLE OverwrittenBy("
+      "path            TEXT    NOT NULL,"
+      "candidate_by    TEXT    NOT NULL);"
+      "CREATE TABLE CopiedFrom("
+      "path            TEXT    NOT NULL,"
+      "candidate_from  TEXT    NOT NULL);"
+      "CREATE TABLE RenameTo("
+      "path            TEXT    NOT NULL,"
+      "candidate_to    TEXT    NOT NULL);");
+  removed_ = std::move(
+      conn.Prepare<std::string>("INSERT INTO Removed(path) VALUES(?)"));
+  new_file_ = std::move(
+      conn.Prepare<std::string>("INSERT INTO NewFile(path) VALUES(?)"));
+  content_changed_ = std::move(
+      conn.Prepare<std::string>("INSERT INTO ContentChanged(path) VALUES(?)"));
+  overwritten_by_ = std::move(conn.Prepare<std::string, std::string>(
+      "INSERT INTO OverwrittenBy(path, candidate_by) VALUES(?, ?)"));
+  copied_from_ = std::move(conn.Prepare<std::string, std::string>(
+      "INSERT INTO CopiedFrom(path, candidate_from) VALUES(?, ?)"));
+  rename_to_ = std::move(conn.Prepare<std::string, std::string>(
+      "INSERT INTO RenameTo(path, candidate_to) VALUES(?, ?)"));
+}
+
+void DirCompDBStream::OverwrittenBy(
+    const std::string &f, const std::vector<std::string> &candidates) {
+  for (const auto &c : candidates) {
+    overwritten_by_->Write(f, c);
+  }
+}
+
+void DirCompDBStream::CopiedFrom(const std::string &f,
+                                 const std::vector<std::string> &candidates) {
+  for (const auto &c : candidates) {
+    copied_from_->Write(f, c);
+  }
+}
+
+void DirCompDBStream::RenameTo(const std::string &f,
+                               const std::vector<std::string> &candidates) {
+  for (const auto &c : candidates) {
+    rename_to_->Write(f, c);
+  }
+}
+
+void DirCompDBStream::ContentChanged(const std::string &f) {
+  content_changed_->Write(f);
+}
+
+void DirCompDBStream::Removed(const std::string &f) { removed_->Write(f); }
+
+void DirCompDBStream::NewFile(const std::string &f) { new_file_->Write(f); }
+
+void DirCompDBStream::Commit() { trans_.Commit(); }

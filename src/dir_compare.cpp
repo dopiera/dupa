@@ -30,32 +30,75 @@ S &operator<<(S &stream, const Paths &p) {
 }
 
 void PrintingOutputStream::OverwrittenBy(
-    const std::string &f, const std::vector<std::string> &candidates) const {
+    const std::string &f, const std::vector<std::string> &candidates) {
   std::cout << "OVERWRITTEN_BY: " << f << " CANDIDATES: " << candidates
             << std::endl;
 }
 
 void PrintingOutputStream::CopiedFrom(
-    const std::string &f, const std::vector<std::string> &candidates) const {
+    const std::string &f, const std::vector<std::string> &candidates) {
   std::cout << "COPIED_FROM: " << f << " CANDIDATES: " << candidates
             << std::endl;
 }
 
-void PrintingOutputStream::Rename(const std::string &f,
-                                  const std::vector<std::string> &to) const {
-  std::cout << "RENAME: " << f << " -> " << to << std::endl;
+void PrintingOutputStream::RenameTo(const std::string &f,
+                                    const std::vector<std::string> &to) {
+  std::cout << "RENAME_TO: " << f << " -> " << to << std::endl;
 }
 
-void PrintingOutputStream::ContentChanged(const std::string &f) const {
+void PrintingOutputStream::ContentChanged(const std::string &f) {
   std::cout << "CONTENT_CHANGED: " << f << std::endl;
 }
 
-void PrintingOutputStream::Removed(const std::string &f) const {
+void PrintingOutputStream::Removed(const std::string &f) {
   std::cout << "REMOVED: " << f << std::endl;
 }
 
-void PrintingOutputStream::NewFile(const std::string &f) const {
+void PrintingOutputStream::NewFile(const std::string &f) {
   std::cout << "NEW_FILE: " << f << std::endl;
+}
+
+CompareOutputStreams::CompareOutputStreams(
+    std::vector<std::reference_wrapper<CompareOutputStream>> &&streams)
+    : streams_(std::move(streams)) {}
+
+void CompareOutputStreams::OverwrittenBy(
+    const std::string &f, const std::vector<std::string> &candidates) {
+  for (auto &s : streams_) {
+    s.get().OverwrittenBy(f, candidates);
+  }
+}
+
+void CompareOutputStreams::CopiedFrom(
+    const std::string &f, const std::vector<std::string> &candidates) {
+  for (auto &s : streams_) {
+    s.get().CopiedFrom(f, candidates);
+  }
+}
+
+void CompareOutputStreams::RenameTo(const std::string &f,
+                                    const std::vector<std::string> &to) {
+  for (auto &s : streams_) {
+    s.get().RenameTo(f, to);
+  }
+}
+
+void CompareOutputStreams::ContentChanged(const std::string &f) {
+  for (auto &s : streams_) {
+    s.get().ContentChanged(f);
+  }
+}
+
+void CompareOutputStreams::Removed(const std::string &f) {
+  for (auto &s : streams_) {
+    s.get().Removed(f);
+  }
+}
+
+void CompareOutputStreams::NewFile(const std::string &f) {
+  for (auto &s : streams_) {
+    s.get().NewFile(f);
+  }
 }
 
 struct PathHash {
@@ -114,7 +157,7 @@ Paths GetPathsForHash(PathHashesByHash &ps, Cksum hash) {
 }
 
 void DirCompare(const std::string &dir1, const std::string &dir2,
-                const CompareOutputStream &stream) {
+                CompareOutputStream &stream) {
   PathHashes hashes1, hashes2;
 
   std::thread h1filler([&dir1, &hashes1]() { hashes1 = FillPathHashes(dir1); });
@@ -149,7 +192,7 @@ void DirCompare(const std::string &dir1, const std::string &dir2,
       Paths ps = GetPathsForHash(hashes2h, h1);
       if (!ps.empty()) {
         if (!Conf().skip_renames_) {
-          stream.Rename(p1, ps);
+          stream.RenameTo(p1, ps);
         }
       } else {
         stream.Removed(p1);

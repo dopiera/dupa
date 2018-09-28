@@ -13,6 +13,7 @@ file_tree_test
 fuzzy_dedup_test
 scanner_test
 db_lib_test
+dir_compare_test
 cscope.*
 install_manifest.txt
 compile_commands.json

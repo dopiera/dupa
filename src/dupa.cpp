@@ -36,11 +36,10 @@ int main(int argc, char **argv) {
       }
       return 0;
     }
+    // Open database first to catch configuration issues soon.
+    std::unique_ptr<DBConnection> db(
+        Conf().sql_out_.empty() ? nullptr : new DBConnection(Conf().sql_out_));
     if (Conf().dirs_.size() == 1) {
-      // Open database first to catch configuration issues soon.
-      std::unique_ptr<DBConnection> db(Conf().sql_out_.empty()
-                                           ? nullptr
-                                           : new DBConnection(Conf().sql_out_));
       FuzzyDedupRes res = FuzzyDedup(Conf().dirs_[0]);
       if (!res.first) {
         // no nodes at all
@@ -57,7 +56,21 @@ int main(int argc, char **argv) {
         }
       }
     } else if (Conf().dirs_.size() == 2) {
-      DirCompare(Conf().dirs_[0], Conf().dirs_[1], PrintingOutputStream());
+      PrintingOutputStream stdout;
+      std::unique_ptr<DirCompDBStream> db_stream(db ? new DirCompDBStream(*db)
+                                                    : nullptr);
+      std::vector<std::reference_wrapper<CompareOutputStream>> streams_v;
+      streams_v.push_back(std::ref(static_cast<CompareOutputStream &>(stdout)));
+      if (db_stream) {
+        streams_v.push_back(
+            std::ref(static_cast<CompareOutputStream &>(*db_stream)));
+      }
+      CompareOutputStreams streams(std::move(streams_v));
+
+      DirCompare(Conf().dirs_[0], Conf().dirs_[1], streams);
+      if (db_stream) {
+        db_stream->Commit();
+      }
       return 0;
     } else {
       // Should have been checked already.
