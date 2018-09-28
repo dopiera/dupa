@@ -26,33 +26,33 @@ class CompareOutputStreamMock : public CompareOutputStream {
  public:
   void OverwrittenBy(const std::string &f,
                      const std::vector<std::string> &candidates) override {
-    const bool inserted =
+    [[maybe_unused]] const bool inserted =
         overwritten_by_.insert(std::make_pair(f, Vector2Set(candidates)))
             .second;
     assert(inserted);
   }
   void CopiedFrom(const std::string &f,
                   const std::vector<std::string> &candidates) override {
-    const bool inserted =
+    [[maybe_unused]] const bool inserted =
         copied_from_.insert(std::make_pair(f, Vector2Set(candidates))).second;
     assert(inserted);
   }
   void RenameTo(const std::string &f,
                 const std::vector<std::string> &to) override {
-    const bool inserted =
+    [[maybe_unused]] const bool inserted =
         rename_to_.insert(std::make_pair(f, Vector2Set(to))).second;
     assert(inserted);
   }
   void ContentChanged(const std::string &f) override {
-    const bool inserted = content_changed_.insert(f).second;
+    [[maybe_unused]] const bool inserted = content_changed_.insert(f).second;
     assert(inserted);
   }
   void Removed(const std::string &f) override {
-    const bool inserted = removed_.insert(f).second;
+    [[maybe_unused]] const bool inserted = removed_.insert(f).second;
     assert(inserted);
   }
   void NewFile(const std::string &f) override {
-    const bool inserted = new_file_.insert(f).second;
+    [[maybe_unused]] const bool inserted = new_file_.insert(f).second;
     assert(inserted);
   }
 
@@ -244,7 +244,7 @@ std::set<std::pair<std::string, std::set<std::string>>> ReadStringToStringList(
 
   for (const auto &[path, candidate] :
        conn.Query<std::string, std::string>("SELECT * FROM " + table + ";")) {
-    const bool inserted = m[path].insert(candidate).second;
+    [[maybe_unused]] const bool inserted = m[path].insert(candidate).second;
     assert(inserted);
   }
   std::set<std::pair<std::string, std::set<std::string>>> r(m.begin(), m.end());
