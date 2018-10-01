@@ -1,0 +1,310 @@
+.TH DUPA 1
+.SH NAME
+dupa \- duplicate analyzer
+.SH SYNOPSIS
+.B dupa
+[\fI\,OPTION\/\fR]... \fI\,DIR1\/\fR [\fI\,DIR2\/\fR]
+.SH DESCRIPTION
+.B dupa
+helps in identifying duplicate files, similar directories or finding differences
+between directories. Only non-empty regular files and directories are
+considered. Everything else is ignored.
+.PP
+If \fI\,DIR2\/\fR is not specified,
+.B dupa
+will analyze \fI\,DIR1\/\fR in search of duplicate files or subdirectories
+similar to each other.
+.PP
+If \fI\,DIR2\/\fR is specified,
+.B dupa
+will do a comparison between the 2 specified directories.
+.SS Duplicate detection
+If you don't specify \fI\,DIR2\/\fR, 
+.B dupa
+will detect duplicates in \fI\,DIR1\/\fR.
+The output will produce 2 parts.
+.PP
+In the first part each line contains space-separated list of directories or
+files which are similar to each other. The lines are sorted by how big the
+duplicate files or directories are. Depending on the \fB\-\-use_size\fR setting
+this is either total sum of sizes of files in a directory or the number of
+files.
+.PP
+The second part contains a list of directories (one per line). Most files in
+each of those directories have duplicates scattered among other directories.
+.PP
+If you chose to dump the results to a database (by using \fB\-\-sql_out\fR option), 2
+tables will be created: 
+.B Node and
+.B EqClass.
+.PP
+.B Node
+represents files and directories. It has the following fields:
+.IP id
+unique identifier of this file
+.IP name
+basename of this file's path
+.IP path
+the file's path
+.IP type
+either "FILE" or "DIR" indicting whether it's a regular file or directory
+.IP cksum
+checksum of the file
+.IP unique_fraction
+a measure of how unique the contents of this directory are; it is a number
+between 0 (all of the files are duplicated elsewhere) and 1 (the files
+in this directory have no duplicates outside of it)
+.IP eq_class
+identifier of the equivalence class in 
+.B EqClass
+table.
+.PP
+.B EqClass
+represents an equivalence class of files or directories. If directories
+fall into the same equivalence class they are considered similar. It has the
+following fields:
+.IP id
+unique identifier of the equivalence class
+.IP nodes
+number of files or directories belonging to this equivalence class
+.IP weight
+average number of files in directories belonging to this class if
+\fB\-\-use_size\fR is unset or average size of directories otherwise
+.IP interesting
+it is set to 1 if at least one of the classes elements' parent directories is
+not a duplicate of something else; usually looking at classes where it is 0
+makes less sense than their parent directories
+.PP
+Usually it makes most sense to join these two tables on
+.B Node.eq_class == EqClass.id.
+For examples on how to use them, please take a look at the
+.SM
+.B EXAMPLES
+section.
+
+.SS Directory comparison
+Directory comparison is straight-forward. Specify 2 directories and
+.B dupa
+will generate a report on the differences. The report lists actions that could
+have led to transforming \fI\,DIR1\/\fR into \fI\,DIR2\/\fR
+.IP "OVERWRITTEN_BY \fI\,f\/\fR CANDIDATES: \fI\,candidates\/\fR..."
+\fI\,f\/\fR existed and was overwritten by one of the \fI\,candidates\/\fR; all
+\fI\,candidates\/\fR are identical
+.IP "COPIED_FROM: \fI\,f\/\fR CANDIDATES: \fI\,candidates\/\fR..."
+\fI\,f\/\fR didn't exist and now is a copy of one of the \fI\,candidates\/\fR;
+all \fI\,candidates\/\fR are identical
+.IP "RENAME_TO: \fI\,f\/\fR CANDIDATES: \fI\,candidates\/\fR..."
+\fI\,f\/\fR was renamed to one of the \fI\,candidates\/\fR; all
+\fI\,candidates\/\fR are identical
+.IP "CONTENT_CHANGED: \fI\,f\/\fR"
+content of \fI\,f\/\fR was changed to something unseen in \fI\,DIR1\/\fR
+.IP "REMOVED: \fI\,f\/\fR"
+\fI\,f\/\fR was removed
+.IP "NEW_FILE: \fI\,f\/\fR"
+\fI\,f\/\fR was created and its content had not been seen in \fI\,DIR1\/\fR
+.PP
+If you chose to dump the results to a database (by using \fB\-\-sql_out\fR
+option), 6 tables will be created: Removed, NewFile, ContentChanged,
+OverwrittenBy, CopiedFrom, RenameTo. Their content is analogous to what is
+printed, hence is should be self-explanatory.
+.SH OPTIONS
+\fI\,DIR1\/\fR and \fI\,DIR2\/\fR can either be paths to directories on a
+filesystem, or paths to SQLite3 databases preceded by a 'db:' prefix. To treat
+arguments starting with 'db:' as filesystem paths rather than databases, please
+use the \fB\-r\fR option. The databases format is described in
+.SM
+.B DESCRIPTION
+section.
+.PP
+Mandatory arguments to long options are mandatory for short options too.
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+produce help message and exit
+.TP
+\fB\-c\fR, \fB\-\-read_cache_from\fR=\fI\,ARG\/\fR
+path to the file from which to read checksum cache; it will be used if the file
+name, size and mtime match; mind that the cache doesn't have the names in any
+canonical form, so if you call
+.B dupa
+in a different working directory, than at the time of producing the cache, the
+cache will be useless
+.TP
+\fB\-C\fR, \fB\-\-dump_cache_to\fR=\fI\,ARG\/\fR
+path to which to dump the checksum cache; such a cache can be used in further
+invocations to avoid recalculating checksums of all the files or to even act a
+list of files
+.TP
+\fB\-o\fR, \fB\-\-sql_out\fR=\fI\,ARG\/\fR
+if set, path to where SQLite3 results will be dumped, refer to
+.SM
+.B DESCRIPTION
+section for how it looks like
+.TP
+\fB\-1\fR, \fB\-\-cache_only\fR
+only generate checksums cache; this option only makes sense if \fB\-C\fR is
+specified too and \fI\,DIR2\/\fR is not specified; it will scan the directory,
+dump cache and not analyze the data; this is useful if you want to just generate
+a list of files for further use
+.TP
+\fB\-s\fR, \fB\-\-use_size\fR
+use file size rather than number of files as a measure of directory sizes; refer
+to
+.SM
+.B INTERNALS
+section to learn what it does specifically
+.TP
+\fB\-r\fR, \fB\-\-ignore_db_prefix\fR
+when parsing \fI\,DIR1\/\fR or \fI\,DIR2\/\fR positional arguments treat them as
+directory paths even if they start with a "db:" prefix
+.TP
+\fB\-w\fR, \fB\-\-skip_renames\fR
+when comparing directories, don't print renames; this is useful if you're
+comparing mostly similar directories with large numbers of files differently
+named files
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+be verbose
+.TP
+\fB\-j\fR, \fB\-\-concurrency\fR=\fI\,ARG\/\fR
+number of concurrently computed checksums (4 by default)
+.TP
+\fB\-t\fR, \fB\-\-tolerable_diff_pct\fR=\fI\,ARG\/\fR
+directories different by this percent or less will be considered duplicates (20
+by default); refer to
+.SM
+.B INTERNALS
+section for more details
+.SH EXIT STATUS
+Provided that the arguments were correct,
+.B dupa
+always returns 0.
+.SH CONSEQUENCES OF ERRORS
+Failures to read files and directories are reported on stderr and don't affect
+the exit status.
+.SH INTERNALS
+Some details were intentionally left out - consult the code for them.
+.PP
+The building block of
+.B dupa
+are SHA1 hashes. Files are considered identical iff their hashes are equal.
+Potential conflicts are ignored. Empty files are ignored, and due to
+implementation details so are files, whose SHA1 hash is 0.
+.PP
+Comparing 2 directories is straight-forward - we compute hashes of files of both
+directories and we then traverse the directory trees  to print the differences.
+The rest of this section covers how analyzing of a single directory works.
+.PP
+We split all files and directories into equivalence (or similarity) classes.
+Every file, directory and equivalence class gets a "weight" assigned. Depending
+on the \fB\-\-use_size\fR setting - it is supposed to either resemble the number
+of files in a directory or its total size. More specifically, equivalence class'
+weight is defined as an average of all its element's weight. Every directory's
+weight is defined as a sum of weights of all files in it (including
+subdirectories). File's weight is either 1 or the file's size.
+.PP
+We build the split into equivalence classes bottom up. All empty directories
+fall into a single equivalence class with weight 0. For every observed file
+hash, we create an equivalence class, to which all the files with the respective
+hash belong. Having classified all files and empty directories, we can classify
+non-empty directories by comparing their contents.
+.PP
+To compare directories contents we introduce a similarity metric which we define
+as the sum of weights of symmetric set difference of equivalence classes of
+entries in both directories divided by the sum of weights of the set union of
+equivalence classes of entries in both directories. The similarity metric
+becomes 0 for identical directories and 1 for directories, whose entries share
+no equivalence class.
+.PP
+When we're picking an equivalence class for a directory we chose the 
+most similar (according to our similarity metric) directories' equivalence
+class, but only if the distance is smaller than \fB\-\-tolerable_diff_pct\fR
+percent.  Otherwise, we create a new equivalence class for it.
+.PP
+It is not clear to the author, whether this way of assigning directories to
+equivalence classes is stable, whether it depends on the order of looking at
+directories, etc. but it has proven good enough in practice to not care.
+.PP
+We consider an equivalence class uninteresting, if all of the class' members
+parent directories have duplicates. The reason is that it is more interesting
+to look and those parent directories in such a case. We skip printing the
+uninteresting equivalence classes.
+.PP
+For every directory we define a uniqueness factor. It is the proportion of the
+sum of weights of its descendants (including subdirectories) which don't have
+duplicates outside of the analyzed directory to the sum of weights of all its
+descendants. If the uniqueness fraction is smaller than
+\fB\-\-tolerable_diff_pct\fR percent, we consider this directory to be mostly
+scattered among other directories. It is computed in a brute-force manner.
+.SH EXAMPLES
+.nf
+.B dupa -C /tmp/home_cache.sqlite3 "$HOME"
+
+.fi
+Detect duplicates on home directory, print a report and dump cache containing
+file hashes to
+.B /tmp/home_cache.sqlite3.
+.PP
+.nf
+.B dupa -c /tmp/home_cache.sqlite3 "$HOME/some_subdir"
+
+.fi
+Detect duplicates on home subdirectory using the previously generated cache so
+that it doesn't process the contents of the files there again
+.PP
+.nf
+.B dupa -1 -C /tmp/some_dir.sqlite3 some_dir
+.B scp /tmp/some_dir.sqlite3 other_machine:/tmp/
+.B ssh other_machine dupa some_other_dir db:/tmp/some_dir.sqlite3
+
+.fi
+Prepare a list of files on the first machine, dump them to
+.B /tmp/some_dir.sqlite3,
+then copy that file to
+.B other_machine
+and eventually compare the contents of this database with a directory on
+.B other_machine.
+That way you can easily compare directories on different machines.
+.PP
+.nf
+.B dupa db:/tmp/some_dir1.sqlite3 -o /tmp/analysis.sqlite3
+
+.fi
+Analyze contents of a previously generate database and dump the results to
+.B /tmp/analysis.sqlite3.
+.PP
+To analyze the database generated in the previous example these SQL queries
+might be useful.
+.PP
+.nf
+.B "SELECT"
+.B "  EqClass.weight as weight,"
+.B "  GROUP_CONCAT(path, '   ') as paths"
+.B "FROM"
+.B "  EqClass JOIN Node ON EqClass.id = Node.eq_class"
+.B "WHERE"
+.B "  nodes > 1 AND interesting = 1"
+.B "GROUP BY"
+.B "  EqClass.id"
+.B "ORDER BY weight DESC"
+.B "LIMIT 10;"
+
+.fi
+Get 10 equivalence classes with the largest weight.
+.PP
+.nf
+.B "SELECT"
+.B "  path,"
+.B "  EqClass.weight as num_files,"
+.B "  unique_fraction"
+.B "FROM"
+.B "  EqClass JOIN Node ON EqClass.id = Node.eq_class"
+.B "WHERE"
+.B "  unique_fraction < 0.2"
+.B "ORDER BY weight DESC"
+.B "LIMIT 10;"
+
+.fi
+Get 10 directories with the largest weight whose contents duplicates are
+scattered outside of them:
+.SH SEE ALSO
+fdupes(1)
