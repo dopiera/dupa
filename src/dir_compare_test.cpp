@@ -57,9 +57,9 @@ class CompareOutputStreamMock : public CompareOutputStream {
     assert(inserted);
   }
   void RenameTo(const std::string &f,
-                const std::vector<std::string> &to) override {
+                const std::vector<std::string> &candidates) override {
     [[maybe_unused]] const bool inserted =
-        rename_to_.insert(std::make_pair(f, Vector2Set(to))).second;
+        rename_to_.insert(std::make_pair(f, Vector2Set(candidates))).second;
     assert(inserted);
   }
   void ContentChanged(const std::string &f) override {

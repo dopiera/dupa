@@ -60,9 +60,9 @@ void PrintingOutputStream::CopiedFrom(
             << std::endl;
 }
 
-void PrintingOutputStream::RenameTo(const std::string &f,
-                                    const std::vector<std::string> &to) {
-  std::cout << "RENAME_TO: " << f << " -> " << to << std::endl;
+void PrintingOutputStream::RenameTo(
+    const std::string &f, const std::vector<std::string> &candidates) {
+  std::cout << "RENAME_TO: " << f << " CANDIDATES: " << candidates << std::endl;
 }
 
 void PrintingOutputStream::ContentChanged(const std::string &f) {
@@ -95,10 +95,10 @@ void CompareOutputStreams::CopiedFrom(
   }
 }
 
-void CompareOutputStreams::RenameTo(const std::string &f,
-                                    const std::vector<std::string> &to) {
+void CompareOutputStreams::RenameTo(
+    const std::string &f, const std::vector<std::string> &candidates) {
   for (auto &s : streams_) {
-    s.get().RenameTo(f, to);
+    s.get().RenameTo(f, candidates);
   }
 }
 

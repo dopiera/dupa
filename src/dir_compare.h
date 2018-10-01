@@ -31,7 +31,7 @@ class CompareOutputStream {
   virtual void CopiedFrom(const std::string &f,
                           const std::vector<std::string> &candidates) = 0;
   virtual void RenameTo(const std::string &f,
-                        const std::vector<std::string> &to) = 0;
+                        const std::vector<std::string> &candidates) = 0;
   virtual void ContentChanged(const std::string &f) = 0;
   virtual void Removed(const std::string &f) = 0;
   virtual void NewFile(const std::string &f) = 0;
@@ -44,7 +44,7 @@ class PrintingOutputStream : public CompareOutputStream {
   void CopiedFrom(const std::string &f,
                   const std::vector<std::string> &candidates) override;
   void RenameTo(const std::string &f,
-                const std::vector<std::string> &to) override;
+                const std::vector<std::string> &candidates) override;
   void ContentChanged(const std::string &f) override;
   void Removed(const std::string &f) override;
   void NewFile(const std::string &f) override;
@@ -59,7 +59,7 @@ class CompareOutputStreams : public CompareOutputStream {
   void CopiedFrom(const std::string &f,
                   const std::vector<std::string> &candidates) override;
   void RenameTo(const std::string &f,
-                const std::vector<std::string> &to) override;
+                const std::vector<std::string> &candidates) override;
   void ContentChanged(const std::string &f) override;
   void Removed(const std::string &f) override;
   void NewFile(const std::string &f) override;
