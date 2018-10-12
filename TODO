@@ -2,4 +2,4 @@
 - add the possibility to dump errors to a DB
 - decouple file_tree from actions taken on it
 - allow for preparing query statements (i.e. prepare statement, then bind it and
-    only then create an input stream)
+  only then create an input stream)
