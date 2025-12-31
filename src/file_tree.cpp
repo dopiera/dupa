@@ -19,12 +19,10 @@
 
 #include "file_tree.h"
 
-#include <cstdint>
-
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 #include <iostream>
-
 #include <unordered_map>
 #include <unordered_set>
 

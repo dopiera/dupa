@@ -20,7 +20,6 @@
 #include <fstream>
 #include <string>
 #include <thread>
-
 #include <utility>
 
 #include "conf.h"

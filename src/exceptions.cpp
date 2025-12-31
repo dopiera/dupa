@@ -20,7 +20,6 @@
 #include "exceptions.h"
 
 #include <cstring>
-
 #include <string>
 
 std::string FsException::MsgFromErrno(int err, const std::string &operation) {

@@ -21,16 +21,16 @@
 
 #include <dirent.h>
 #include <fcntl.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <cerrno>
 
+#include <algorithm>
+#include <boost/functional/hash/hash.hpp>
+#include <cerrno>
 #include <memory>
 #include <utility>
-
-#include <openssl/sha.h>
-
-#include <boost/functional/hash/hash.hpp>
 
 #include "db_lib_impl.h"
 #include "exceptions.h"
@@ -91,9 +91,35 @@ class InodeCache {
 // I'm asking for trouble, but I'm lazy.
 InodeCache ino_cache;
 
+struct MdCtxDeleter {
+  void operator()(EVP_MD_CTX *md_ctx) { EVP_MD_CTX_destroy(md_ctx); }
+};
+
+struct BIODeleter {
+  void operator()(BIO *bio) { BIO_free(bio); }
+};
+
+std::once_flag openssl_initialized_flag;
+
+void Init() {
+  if (OPENSSL_init_crypto(0, nullptr) != 1) {
+    throw std::runtime_error("Failed to initialize SSL");
+  }
+}
+
+std::string GetError() {
+  std::unique_ptr<BIO, BIODeleter> bio(BIO_new(BIO_s_mem()));
+  ERR_print_errors(bio.get());
+  char *buf = nullptr;
+  size_t len = BIO_get_mem_data(bio.get(), &buf);
+  return std::string(buf, len);
+}
+
 Cksum ComputeCksum(int fd, InodeCache::Uuid uuid,
                    const std::string &path_for_errors) {
   {
+    std::call_once(openssl_initialized_flag, Init);
+
     std::pair<bool, Cksum> sum = ino_cache.Get(uuid);
     if (sum.first) {
       DLOG(path_for_errors << " shares an inode with something already "
@@ -110,8 +136,12 @@ Cksum ComputeCksum(int fd, InodeCache::Uuid uuid,
     Cksum prefix_;
   } sha_res;
 
-  SHA_CTX sha;
-  SHA1_Init(&sha);
+  auto const *md = EVP_sha1();
+
+  std::unique_ptr<EVP_MD_CTX, MdCtxDeleter> mdctx(EVP_MD_CTX_create());
+  if (EVP_DigestInit_ex(mdctx.get(), md, nullptr) != 1) {
+    throw std::runtime_error("Can't initialize SHA1: " + GetError());
+  }
   size_t size = 0;
   while (true) {
     ssize_t res = read(fd, buf.get(), buf_size);
@@ -122,9 +152,15 @@ Cksum ComputeCksum(int fd, InodeCache::Uuid uuid,
       break;
     }
     size += res;
-    SHA1_Update(&sha, reinterpret_cast<u_char *>(buf.get()), res);
+    if (EVP_DigestUpdate(mdctx.get(), buf.get(), res) != 1) {
+      throw std::runtime_error("Can't update SHA1: " + GetError());
+    }
   }
-  SHA1_Final(sha_res.complete_, &sha);
+  unsigned md_len;
+  if (EVP_DigestFinal_ex(mdctx.get(), sha_res.complete_, &md_len) != 1) {
+    throw std::runtime_error("Can't update SHA1: " + GetError());
+  }
+  assert(md_len == sizeof(sha_res.complete_));
 
   if (size) {
     ino_cache.Update(uuid, sha_res.prefix_);

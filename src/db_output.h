@@ -49,7 +49,6 @@ class DirCompDBStream : public CompareOutputStream {
   void Commit();
 
  private:
-  DBConnection &conn_;
   DBTransaction trans_;
   std::unique_ptr<DBOutStream<std::string>> removed_;
   std::unique_ptr<DBOutStream<std::string>> new_file_;

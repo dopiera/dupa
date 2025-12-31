@@ -19,12 +19,34 @@
 
 PROJ_DIR="$(dirname "$0")/.."
 
+log() {
+  echo "$@" > /dev/stderr
+}
+
+fail() {
+  log "$@"
+  exit 1
+}
+
+COMPILE_DB=$(find "$PROJ_DIR" -name compile_commands.json | xargs ls -t -1 | head -1)
+
+[ -n "$COMPILE_DB" ] || fail "Could not find a `compile_commands.json` file. Make sure you build the project first"
+
+COMPILE_DIR=$(dirname "$COMPILE_DB")
+
 if [ $# -eq 0 ] ; then
-  clang-tidy -format-style=google -p "$PROJ_DIR" -header-filter=src/.* \
-    $PROJ_DIR/src/*.cpp
+  # Run clang-tidy in parallel on all .cpp files
+  # Use number of CPU cores for parallel jobs
+  JOBS=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+  find "$PROJ_DIR/src" -name "*.cpp" -print0 | \
+    xargs -0 -P "$JOBS" -I {} \
+    clang-tidy -format-style=google -p "$COMPILE_DB" -header-filter=src/.* {}
 else
-  clang-tidy -format-style=google -p "$PROJ_DIR" -header-filter=src/.* \
-    "$@"
+  # When specific files are provided, also run in parallel
+  JOBS=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+  printf '%s\0' "$@" | \
+    xargs -0 -P "$JOBS" -I {} \
+    clang-tidy -format-style=google -p "$COMPILE_DIR" -header-filter=src/.* {}
 fi
 
 

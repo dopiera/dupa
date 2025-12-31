@@ -20,12 +20,11 @@
 #ifndef SRC_FILE_TREE_H_
 #define SRC_FILE_TREE_H_
 
+#include <boost/filesystem/path.hpp>
 #include <cassert>
 #include <functional>
 #include <string>
 #include <vector>
-
-#include <boost/filesystem/path.hpp>
 
 #include "log.h"
 

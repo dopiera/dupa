@@ -21,6 +21,7 @@
 
 #include <sys/stat.h>
 
+#include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
 

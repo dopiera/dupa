@@ -20,15 +20,12 @@
 #ifndef SRC_HASH_CACHE_H_
 #define SRC_HASH_CACHE_H_
 
+#include <boost/filesystem/path.hpp>
 #include <cstdint>
-
 #include <memory>
 #include <mutex>
 #include <string>
-
 #include <unordered_map>
-
-#include <boost/filesystem/path.hpp>
 
 #include "db_lib.h"
 

@@ -20,6 +20,8 @@
 #ifndef SRC_DB_LIB_IMPL_H_
 #define SRC_DB_LIB_IMPL_H_
 
+#include <sqlite3.h>
+
 #include <cstdint>
 #include <cstring>
 #include <functional>
@@ -27,8 +29,6 @@
 #include <string>
 #include <type_traits>
 #include <utility>
-
-#include <sqlite3.h>
 
 #include "db_lib.h"
 
@@ -295,7 +295,7 @@ DBOutStream<ARGS...>::DBOutStream(DBConnection &conn, detail::DBStmtPtr &&stmt)
     : conn_(conn), stmt_(std::move(stmt)) {}
 
 template <typename... ARGS>
-void DBOutStream<ARGS...>::Write(const ARGS &... args) {
+void DBOutStream<ARGS...>::Write(const ARGS &...args) {
   detail::Bind(*stmt_, args...);
   int res = sqlite3_step(stmt_.get());
   if (res != SQLITE_DONE) {

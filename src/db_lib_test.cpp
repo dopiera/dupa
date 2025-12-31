@@ -17,12 +17,10 @@
  * License along with dupa. If not, see http://www.gnu.org/licenses/.
  */
 
-#include "db_lib_impl.h"
-
+#include <boost/filesystem/operations.hpp>
 #include <cstdlib>
 
-#include <boost/filesystem/operations.hpp>
-
+#include "db_lib_impl.h"
 #include "exceptions.h"
 #include "gtest/gtest.h"
 #include "log.h"

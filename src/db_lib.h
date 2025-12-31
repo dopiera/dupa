@@ -20,6 +20,8 @@
 #ifndef SRC_DB_LIB_H_
 #define SRC_DB_LIB_H_
 
+#include <sqlite3.h>
+
 #include <cassert>
 #include <exception>
 #include <functional>
@@ -27,8 +29,6 @@
 #include <string>
 #include <tuple>
 #include <utility>
-
-#include <sqlite3.h>
 
 class DBConnection;
 template <typename... ARGS>
@@ -38,7 +38,7 @@ class DBOutStream;
 
 namespace detail {
 
-struct SqliteFinalizer : public std::unary_function<sqlite3_stmt *, void> {
+struct SqliteFinalizer {
   void operator()(sqlite3_stmt *p) const { sqlite3_finalize(p); }
 };
 
@@ -61,11 +61,13 @@ class DBException : public std::exception {
 };
 
 template <typename... ARGS>
-class DBInputIt
-    : public std::iterator<std::input_iterator_tag, std::tuple<ARGS...>,
-                           ptrdiff_t, const std::tuple<ARGS...> *,
-                           const std::tuple<ARGS...> &> {
+class DBInputIt {
  public:
+  using iterator_category = std::input_iterator_tag;
+  using value_type = std::tuple<ARGS...>;
+  using difference_type = ptrdiff_t;
+  using pointer = const std::tuple<ARGS...> *;
+  using reference = const std::tuple<ARGS...> &;
   DBInputIt() : stream_(nullptr) {}
   explicit DBInputIt(DBInStream<ARGS...> &s) : stream_(&s) { Fetch(); }
 
@@ -84,9 +86,13 @@ class DBInputIt
 };
 
 template <typename... ARGS>
-class DBOutputIt
-    : public std::iterator<std::output_iterator_tag, void, void, void, void> {
+class DBOutputIt {
  public:
+  using iterator_category = std::output_iterator_tag;
+  using value_type = void;
+  using difference_type = void;
+  using pointer = void;
+  using reference = void;
   explicit DBOutputIt(DBOutStream<ARGS...> &s) : stream_(&s) {}
   DBOutputIt &operator*() { return *this; }
   DBOutputIt &operator++() { return *this; }
@@ -125,7 +131,7 @@ class DBInStream {
 template <typename... ARGS>
 class DBOutStream {
  public:
-  void Write(const ARGS &... args);
+  void Write(const ARGS &...args);
   DBOutputIt<ARGS...> begin();  // NOLINT
 
   DBOutStream(const DBOutStream &) = delete;
@@ -149,7 +155,7 @@ class DBInStreamPtr {
  public:
   explicit DBInStreamPtr(std::shared_ptr<DBInStream<ARGS...>> impl)
       : impl_(std::move(std::move(impl))) {}
-  DBInStreamPtr(const DBInStreamPtr<ARGS...> &o) : impl_(o.impl) {}
+  DBInStreamPtr(const DBInStreamPtr<ARGS...> &o) : impl_(o.impl_) {}
   std::tuple<ARGS...> Read() { return impl_->Read(); }
   bool Eof() const { return impl_->Eof(); }
   DBInputIt<ARGS...> begin() { return impl_->begin(); }  // NOLINT

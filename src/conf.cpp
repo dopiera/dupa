@@ -19,11 +19,9 @@
 
 #include "conf.h"
 
-#include <cstdlib>
-
-#include <iostream>
-
 #include <boost/program_options.hpp>
+#include <cstdlib>
+#include <iostream>
 #include <memory>
 
 #include "log.h"

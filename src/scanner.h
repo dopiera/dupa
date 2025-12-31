@@ -20,9 +20,8 @@
 #ifndef SRC_SCANNER_H_
 #define SRC_SCANNER_H_
 
-#include <cstdint>
-
 #include <boost/filesystem/path.hpp>
+#include <cstdint>
 
 #include "hash_cache.h"  // for cksum
 

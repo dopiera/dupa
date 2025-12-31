@@ -20,19 +20,17 @@
 #ifndef SRC_SCANNER_INT_H_
 #define SRC_SCANNER_INT_H_
 
-#include "scanner.h"
-
+#include <boost/filesystem.hpp>
 #include <map>
 #include <optional>
 #include <stack>
 #include <thread>
 #include <utility>
 
-#include <boost/filesystem/convenience.hpp>
-
 #include "conf.h"
 #include "hash_cache.h"
 #include "log.h"
+#include "scanner.h"
 #include "synch_thread_pool.h"
 
 namespace detail {
@@ -85,7 +83,7 @@ void ScanDirectory(const boost::filesystem::path &root,
             std::lock_guard<std::mutex> lock(mutex);
             dirs_to_process.push(std::make_pair(new_path, handle));
           }
-          if (boost::filesystem::is_regular(new_path)) {
+          if (boost::filesystem::is_regular_file(new_path)) {
             pool.Submit([new_path, handle, &mutex, &processor]() mutable {
               try {
                 const FileInfo f_info = HashCache::Get()(new_path);

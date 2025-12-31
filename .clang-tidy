@@ -1,5 +1,6 @@
-Checks: '-*,clang-analyzer-*,google-*,modernize-*,misc-*,performance-*,portability-*,readability-*,-google-runtime-references,-readability-implicit-bool-conversion,readability-identifier-naming'
+Checks: '-*,clang-analyzer-*,google-*,modernize-*,misc-*,performance-*,portability-*,readability-*,-google-runtime-references,-readability-implicit-bool-conversion,readability-identifier-naming,-modernize-use-trailing-return-type,-readability-identifier-length,-modernize-avoid-c-arrays,-readability-magic-numbers,-misc-include-cleaner,-performance-enum-size,-modernize-use-nodiscard,-misc-non-private-member-variables-in-classes,-modernize-use-default-member-init,-modernize-type-traits,-modernize-return-braced-init-list,-readability-function-cognitive-complexity,-misc-use-anonymous-namespace,-misc-use-internal-linkage,-readability-isolate-declaration,-misc-no-recursion,-portability-template-virtual-member-function,-modernize-avoid-bind,-modernize-concat-nested-namespaces,-readability-make-member-function-const,-readability-use-anyofallof,-modernize-make-shared,-readability-redundant-inline-specifier,-performance-unnecessary-value-param,-performance-avoid-endl,-misc-const-correctness'
 CheckOptions:
+  - {key: readability-identifier-naming.TypeAliasIgnoredRegexp, value: 'iterator_category|value_type|difference_type|pointer|reference'}
   - {key: readability-identifier-naming.NamespaceCase, value: lower_case}
   - {key: readability-identifier-naming.InlineNamespaceCase, value: lower_case}
   - {key: readability-identifier-naming.EnumConstantCase, value: UPPER_CASE}

@@ -20,10 +20,9 @@
 #include <utility>
 
 #include "db_lib_impl.h"
-
 #include "log.h"
 
-struct SqliteDeleter : public std::unary_function<void *, void> {
+struct SqliteDeleter {
   void operator()(void *p) const { sqlite3_free(p); }
 };
 

@@ -19,9 +19,8 @@
 
 #include "fuzzy_dedup.h"
 
-#include <memory>
-
 #include <boost/filesystem/path.hpp>
+#include <memory>
 
 #include "gtest/gtest.h"
 

@@ -19,6 +19,7 @@
 
 #include "db_output.h"
 
+#include <algorithm>
 #include <new>
 
 #include "db_lib_impl.h"
@@ -85,8 +86,7 @@ void DumpFuzzyDedupRes(DBConnection &db, const FuzzyDedupRes &res) {
   trans.Commit();
 }
 
-DirCompDBStream::DirCompDBStream(DBConnection &conn)
-    : conn_(conn), trans_(conn) {
+DirCompDBStream::DirCompDBStream(DBConnection &conn) : trans_(conn) {
   conn.Exec(
       "DROP TABLE IF EXISTS Removed;"
       "DROP TABLE IF EXISTS NewFile;"
@@ -109,18 +109,16 @@ DirCompDBStream::DirCompDBStream(DBConnection &conn)
       "CREATE TABLE RenameTo("
       "path            TEXT    NOT NULL,"
       "candidate_to    TEXT    NOT NULL);");
-  removed_ = std::move(
-      conn.Prepare<std::string>("INSERT INTO Removed(path) VALUES(?)"));
-  new_file_ = std::move(
-      conn.Prepare<std::string>("INSERT INTO NewFile(path) VALUES(?)"));
-  content_changed_ = std::move(
-      conn.Prepare<std::string>("INSERT INTO ContentChanged(path) VALUES(?)"));
-  overwritten_by_ = std::move(conn.Prepare<std::string, std::string>(
-      "INSERT INTO OverwrittenBy(path, candidate_by) VALUES(?, ?)"));
-  copied_from_ = std::move(conn.Prepare<std::string, std::string>(
-      "INSERT INTO CopiedFrom(path, candidate_from) VALUES(?, ?)"));
-  rename_to_ = std::move(conn.Prepare<std::string, std::string>(
-      "INSERT INTO RenameTo(path, candidate_to) VALUES(?, ?)"));
+  removed_ = conn.Prepare<std::string>("INSERT INTO Removed(path) VALUES(?)");
+  new_file_ = conn.Prepare<std::string>("INSERT INTO NewFile(path) VALUES(?)");
+  content_changed_ =
+      conn.Prepare<std::string>("INSERT INTO ContentChanged(path) VALUES(?)");
+  overwritten_by_ = conn.Prepare<std::string, std::string>(
+      "INSERT INTO OverwrittenBy(path, candidate_by) VALUES(?, ?)");
+  copied_from_ = conn.Prepare<std::string, std::string>(
+      "INSERT INTO CopiedFrom(path, candidate_from) VALUES(?, ?)");
+  rename_to_ = conn.Prepare<std::string, std::string>(
+      "INSERT INTO RenameTo(path, candidate_to) VALUES(?, ?)");
 }
 
 void DirCompDBStream::OverwrittenBy(

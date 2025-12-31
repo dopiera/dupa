@@ -22,9 +22,8 @@
 
 #include <memory>
 #include <queue>
-#include <utility>
-
 #include <unordered_map>
+#include <utility>
 
 #include "file_tree.h"
 #include "hash_cache.h"  // for Cksum

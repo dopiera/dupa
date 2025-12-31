@@ -20,14 +20,13 @@
 #ifndef SRC_SYNCH_THREAD_POOL_H_
 #define SRC_SYNCH_THREAD_POOL_H_
 
+#include <boost/filesystem/path.hpp>
 #include <condition_variable>
 #include <functional>
 #include <memory>
 #include <queue>
 #include <thread>
 #include <vector>
-
-#include <boost/filesystem/path.hpp>
 
 class SyncCounter {
  public:

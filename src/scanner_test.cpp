@@ -20,9 +20,8 @@
 #include <memory>
 #include <utility>
 
-#include "scanner_int.h"
-
 #include "gtest/gtest.h"
+#include "scanner_int.h"
 #include "test_common.h"
 
 class Node;

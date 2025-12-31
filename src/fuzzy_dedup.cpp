@@ -19,15 +19,15 @@
 
 #include "fuzzy_dedup.h"
 
+#include <algorithm>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 #include <functional>
 #include <iostream>
 #include <memory>
 #include <stack>
 #include <thread>
 #include <unordered_set>
-
-#include <boost/filesystem/convenience.hpp>
-#include <boost/filesystem/path.hpp>
 
 #include "hash_cache.h"
 #include "log.h"
@@ -143,7 +143,7 @@ std::unique_ptr<EqClass> ClassifyEmptyDirs(Node &node) {
       eq_class->AddNode(*node);
     }
   });
-  return std::move(eq_class);
+  return eq_class;
 }
 
 //======== ClassifyDuplicateFiles ==============================================

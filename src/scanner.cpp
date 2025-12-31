@@ -17,9 +17,9 @@
  * License along with dupa. If not, see http://www.gnu.org/licenses/.
  */
 
-#include "scanner_int.h"
-
 #include <iterator>
+
+#include "scanner_int.h"
 
 namespace detail {
 
